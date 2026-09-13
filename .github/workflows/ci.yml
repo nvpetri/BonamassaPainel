@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      PANEL_MODE: demo
     steps:
       - uses: actions/checkout@v7
         with:
@@ -39,4 +40,71 @@ jobs:
         with:
           name: resultados-playwright
           path: test-results/
+          retention-days: 7
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: bonamassa
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: bonamassa_panel_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bonamassa -d bonamassa_panel_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql://bonamassa:ci-only-password@localhost:5432/bonamassa_panel_test
+      SEED_STORE_SLUG: bonamassa
+      SEED_MANAGER_EMAIL: manager@teste.example
+      SEED_MANAGER_PASSWORD: Manager-ci-only-password-2026
+      SEED_DEMO: "true"
+      PANEL_MODE: api
+      API_URL: http://127.0.0.1:3001
+      STORE_SLUG: bonamassa
+      SESSION_SECRET: ci-only-session-key-never-use-in-production-2026
+      COOKIE_SECURE: "false"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/checkout@v7
+        with:
+          repository: nvpetri/APIBonamassa
+          ref: c9fcefad3827343a27abd5b0d14970a935b182b5
+          path: _api
+          persist-credentials: false
+      - run: npm ci
+      - run: npm ci
+        working-directory: _api
+      - run: npm run db:migrate && npm run build && npm run db:seed
+        working-directory: _api
+      - name: Iniciar API
+        working-directory: _api
+        run: |
+          NODE_ENV=test npm start > "$RUNNER_TEMP/api.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/v1/health; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:api
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: testes-api-postgresql
+          path: |
+            test-results/
+            ${{ runner.temp }}/api.log
           retention-days: 7

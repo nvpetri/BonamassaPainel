@@ -1,5 +1,7 @@
 "use client";
 
+import { RemoteNewOrder } from "./remote-new-order";
+
 import { useState, type FormEvent } from "react";
 import { Plus, Pizza, ShoppingBag, Trash2 } from "lucide-react";
 import {
@@ -17,7 +19,7 @@ import { Button, Field, Modal, MoneyInput, moneyText, parseMoney } from "./ui";
 import { ItemBuilder } from "./item-builder";
 import { ItemComponents } from "./order-components";
 
-export function NewOrder({
+function DemoNewOrder({
   onClose,
   initialItem,
 }: {
@@ -394,4 +396,9 @@ export function NewOrder({
       </form>
     </Modal>
   );
+}
+
+export function NewOrder(props: Parameters<typeof DemoNewOrder>[0]) {
+  const { api } = usePanel();
+  return api ? <RemoteNewOrder {...props} /> : <DemoNewOrder {...props} />;
 }

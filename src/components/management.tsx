@@ -28,7 +28,7 @@ import {
 import { CardAction } from "./order-detail";
 
 export function Deliveries({ onOpen }: { onOpen(id: string): void }) {
-  const { state, now, busy, execute } = usePanel();
+  const { state, now, busy, execute, api } = usePanel();
   const [tab, setTab] = useState("ready");
   const active = state!.orders.filter(
     (o) => o.mode === "DELIVERY" && isActive(o),
@@ -48,7 +48,9 @@ export function Deliveries({ onOpen }: { onOpen(id: string): void }) {
           </h2>
           <p>Disponibilidade para novas coletas.</p>
         </div>
-        <Badge tone="gold">Entregadores de exemplo</Badge>
+        <Badge tone="gold">
+          {api ? "Equipe cadastrada" : "Entregadores de exemplo"}
+        </Badge>
       </div>
       <div className="driver-grid">
         {state!.drivers.map((driver) => {
@@ -81,7 +83,11 @@ export function Deliveries({ onOpen }: { onOpen(id: string): void }) {
                 </div>
                 <div>
                   <strong>{completed}</strong>
-                  <span>concluídas na demo</span>
+                  <span>
+                    {api
+                      ? "concluídas no histórico carregado"
+                      : "concluídas na demo"}
+                  </span>
                 </div>
               </div>
               <div className="driver-order-tags">
@@ -103,7 +109,12 @@ export function Deliveries({ onOpen }: { onOpen(id: string): void }) {
                 )}
               </div>
               <button
-                disabled={busy}
+                disabled={
+                  busy ||
+                  (!!api &&
+                    (api.user?.role !== "MANAGER" ||
+                      !api.drivers.find((d) => d.id === driver.id)?.enabled))
+                }
                 role="switch"
                 aria-checked={driver.available}
                 aria-label={`Disponibilidade de ${driver.name}`}
@@ -159,7 +170,10 @@ export function Deliveries({ onOpen }: { onOpen(id: string): void }) {
           ))}
         </div>
         <span className="toolbar-note">
-          <Info size={14} /> Ações do motoboy são simuladas
+          <Info size={14} />{" "}
+          {api
+            ? "Etapas da rota são confirmadas pelo entregador"
+            : "Ações do motoboy são simuladas"}
         </span>
       </div>
       {visible.length ? (

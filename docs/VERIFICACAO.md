@@ -1,3 +1,19 @@
+# Verificação — integração com a API (0.4.0)
+
+A integração mantém a regressão da demonstração e acrescenta contratos, sessão e um percurso de navegador com APIBonamassa e PostgreSQL 17 reais em banco efêmero.
+
+- Build de produção, TypeScript e ESLint passaram.
+- 69 testes de regras, mapeamento e sessão passaram.
+- 21 cenários da demonstração passaram no GitHub Actions.
+- Login conferido em 1440×1000 e 390×844: sem erros de JavaScript ou transbordamento horizontal.
+- O job `integration` da PR #5 executa: gerente, cadastro da equipe, sabor com foto, alteração de combo, promoção por prazo/quantidade, revisão do pedido no servidor, aceite, cozinha em outra sessão, despacho, conclusão via sessão do entregador, histórico, reserva/venda da promoção, permissões, CSRF e recuperação após perder a resposta de uma criação já gravada.
+
+Os resultados do código publicado estão nos [checks da PR #5](https://github.com/nvpetri/BonamassaPainel/pull/5/checks). O workflow fixa a revisão da API; não depende do servidor local do desenvolvedor. Os APKs Android não fazem parte deste teste: as etapas de entregador são enviadas diretamente à API pelo cliente de teste autenticado.
+
+Os registros abaixo são históricos da demo, com o escopo e os números daquela versão.
+
+---
+
 # Verificação do painel — formato e desconto dos combos
 
 Validação executada em 13/09/2026, em Linux com Node.js 24.19.0.

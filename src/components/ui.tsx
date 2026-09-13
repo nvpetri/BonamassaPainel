@@ -323,7 +323,7 @@ export function OrderCard({
               "Sem valor a cobrar"
             ) : order.payment === "PREPAID" ? (
               <>
-                <Check size={12} /> Pago · demo
+                <Check size={12} /> Pagamento registrado
               </>
             ) : order.payment === "CASH" ? (
               order.mode === "DELIVERY" ? (

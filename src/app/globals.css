@@ -4447,3 +4447,220 @@ body:has(dialog[open]) .toast {
     white-space: normal;
   }
 }
+
+/* Connected operation: same Bonamassa palette, with explicit connection state. */
+.remote-login {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background:
+    radial-gradient(ellipse at 20% 10%, #4a2920 0, transparent 55%), var(--bg);
+}
+.remote-login-card {
+  width: min(100%, 460px);
+  padding: 38px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 24px 90px #0005;
+}
+.remote-login-card > img {
+  display: block;
+  margin: 0 auto 28px;
+}
+.remote-login-card h1 {
+  font-size: 29px;
+  line-height: 1.2;
+  margin: 12px 0;
+  letter-spacing: -0.7px;
+}
+.remote-login-card p {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 12px 0 22px;
+}
+.remote-login-card .field {
+  margin-bottom: 18px;
+}
+.remote-login-card .field-hint {
+  font-size: 12px;
+  margin-bottom: 0;
+}
+.remote-alert {
+  padding: 18px 22px;
+  border: 1px solid #956b3c;
+  background: #30251b;
+  border-radius: 12px;
+  margin-bottom: 22px;
+}
+.remote-alert p {
+  line-height: 1.6;
+  margin: 8px 0 14px;
+}
+.remote-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.remote-metrics > div {
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.remote-metrics span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.remote-metrics strong {
+  display: block;
+  font-size: 32px;
+  margin-top: 10px;
+}
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.remote-kitchen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.remote-kitchen-column {
+  min-width: 0;
+  padding: 15px;
+  background: #171614;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.remote-kitchen-column > h2 {
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.remote-kitchen-column .order-card {
+  margin-bottom: 16px;
+}
+.remote-updated,
+.remote-history-footer {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 24px;
+}
+.remote-history-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 80px minmax(120px, 1fr) 200px 100px;
+  gap: 16px;
+  align-items: center;
+  text-align: left;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+.remote-history-row:hover {
+  background: var(--raised);
+}
+.remote-team {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+}
+.remote-team .settings-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+}
+.remote-order-form > .field {
+  margin: 18px 0;
+}
+.remote-order-form > h3 {
+  margin: 24px 0 14px;
+}
+.remote-address {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+.review-line {
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  align-items: start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.review-line > div {
+  min-width: 0;
+}
+.review-line p,
+.remote-review-heading p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 4px 0;
+}
+.review-line > b {
+  white-space: nowrap;
+}
+.remote-totals {
+  margin-top: 24px;
+}
+.remote-totals > p {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 12px 0;
+}
+.remote-totals .remote-total {
+  font-size: 23px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+  color: var(--gold);
+}
+@media (max-width: 1150px) {
+  .remote-kitchen {
+    gap: 10px;
+  }
+  .remote-kitchen-column {
+    padding: 10px;
+  }
+}
+@media (max-width: 850px) {
+  .remote-kitchen {
+    grid-template-columns: 1fr;
+  }
+  .remote-history-row {
+    grid-template-columns: 70px 1fr;
+  }
+  .remote-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 500px) {
+  .remote-login {
+    padding: 16px;
+  }
+  .remote-login-card {
+    padding: 25px;
+  }
+  .remote-address {
+    grid-template-columns: 1fr;
+  }
+  .orders-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .remote-metrics {
+    gap: 10px;
+  }
+}

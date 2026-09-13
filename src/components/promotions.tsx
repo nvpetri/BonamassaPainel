@@ -1,5 +1,7 @@
 "use client";
 
+import { randomId } from "@/data/api-client";
+
 import { useState, type FormEvent } from "react";
 import {
   BadgePercent,
@@ -38,7 +40,7 @@ export const discountLabel = (p: Pick<Promotion, "kind" | "value">) =>
   p.kind === "PERCENTAGE" ? `${p.value}%` : brl(p.value);
 
 export function Promotions() {
-  const { state, now, busy, execute } = usePanel();
+  const { state, now, busy, execute, api } = usePanel();
   const [editing, setEditing] = useState<Promotion | null | undefined>(
     undefined,
   );
@@ -50,10 +52,12 @@ export function Promotions() {
   const visible = filter === "all" ? promotions : active;
   const sold = state!.orders.filter((o) => o.status === "DELIVERED");
   const saved = sold.reduce((sum, order) => sum + order.discount, 0);
-  const soldPizzas = sold.reduce(
-    (sum, order) => sum + (order.promotion?.pizzaQuantity ?? 0),
-    0,
-  );
+  const soldPizzas = api
+    ? promotions.reduce((sum, p) => sum + promotionUsage(p, []).sold, 0)
+    : sold.reduce(
+        (sum, order) => sum + (order.promotion?.pizzaQuantity ?? 0),
+        0,
+      );
   return (
     <>
       <div className="promotion-intro">
@@ -89,14 +93,22 @@ export function Promotions() {
             <Pizza size={16} /> Pizzas vendidas em promoção
           </span>
           <strong>{soldPizzas}</strong>
-          <small>Somente pedidos concluídos</small>
+          <small>
+            {api
+              ? "Pedidos concluídos · contador da API"
+              : "Somente pedidos concluídos"}
+          </small>
         </div>
         <div>
           <span>
             <BadgePercent size={16} /> Descontos concedidos
           </span>
           <strong>{brl(saved)}</strong>
-          <small>Somente pedidos concluídos</small>
+          <small>
+            {api
+              ? "Nos pedidos concluídos carregados"
+              : "Somente pedidos concluídos"}
+          </small>
         </div>
       </div>
       <div className="board-toolbar">
@@ -309,7 +321,7 @@ function PromotionEditor({
     event.preventDefault();
     setError("");
     const parsed = promotionSchema.safeParse({
-      id: promotion?.id ?? crypto.randomUUID(),
+      id: promotion?.id ?? randomId(),
       version: promotion?.version ?? 0,
       name,
       kind,

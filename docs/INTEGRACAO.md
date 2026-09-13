@@ -1,123 +1,34 @@
-# Integração proposta do painel
+# Integração implementada — painel 0.4.0
 
-Este documento é um contrato de trabalho para a próxima etapa. **Os endpoints abaixo ainda não existem.** O painel atual usa somente `demoRepository`; os apps Android não leem seu IndexedDB.
+Referência: APIBonamassa `c9fcefad3827343a27abd5b0d14970a935b182b5` (PR #1 integrado).
 
-## Separação dos projetos
+O navegador conversa com o servidor Next.js na mesma origem. `API_URL` e `SESSION_SECRET` são variáveis apenas do servidor. Os Route Handlers de `/api/session` e `/api/backend/[...path]` trocam o cookie criptografado pelo Bearer da API. Não existe proxy de URL arbitrária: métodos e caminhos são limitados aos contratos do painel. Escritas validam Origin/Host e recebem Idempotency-Key. A API continua validando usuário, unidade e perfil.
 
-O painel permanece no repositório BonamassaPainel. A API NestJS e o banco PostgreSQL devem ficar no projeto próprio da API. Os apps cliente e entregador continuam nos respectivos repositórios.
+| Operação                           | Contrato da API                                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Entrar / identificar / sair        | POST `/v1/sessions`, GET `/v1/me`, DELETE `/v1/sessions/current`                                               |
+| Catálogo, disponibilidade e preços | GET `/v1/staff/catalog`, POST/PATCH `/v1/staff/products`                                                       |
+| Foto                               | POST multipart `/v1/staff/product-images`, GET `/v1/stores/{slug}/images/{id}`                                 |
+| Promoções                          | POST/PATCH `/v1/staff/promotions`                                                                              |
+| Operação da loja                   | PATCH `/v1/staff/store`                                                                                        |
+| Equipe e disponibilidade           | GET/POST/PATCH `/v1/staff/users`, GET `/v1/staff/drivers`, PATCH disponibilidade                               |
+| Revisão e pedido manual            | POST `/v1/orders/quote`, POST `/v1/staff/orders` com quoteId                                                   |
+| Pedidos / cozinha                  | GET paginado `/v1/staff/orders`; projeção conforme o papel                                                     |
+| Etapas da operação                 | POST `/v1/staff/orders/{id}/accept`, `/prepare`, `/ready`, `/assign`, `/pickup-complete`, `/cancel`, `/return` |
 
-O servidor será responsável por estabelecimento, sessão, perfil, preços, disponibilidade, numeração e estado canônico dos pedidos. Valores, pagamento antecipado, autorização e total enviados pelo frontend não constituem prova de cobrança ou permissão.
+## Consistência
 
-## Operações sugeridas
+- Cada comando conserva a versão exibida ao iniciar a ação. Edição de produto usa a versão da instância original do formulário, inclusive se uma atualização automática chegar enquanto ele está aberto.
+- Preços da montagem são apenas referência. A tela de revisão exibe o snapshot calculado pela API e envia somente quoteId na criação.
+- Cotas de promoções usam os contadores reservados/vendidos da API. Nunca são reconstituídas de um histórico incompleto.
+- As requisições pendentes sobrevivem a reload em IndexedDB, separadas por usuário/unidade. Chaves são mantidas após falha ambígua (rede/5xx). Uma resposta confirmada permanece sucesso mesmo se a leitura seguinte falhar.
+- Catálogo, equipe e pedidos ficam somente em memória. Fotos são otimizadas no navegador, enviadas ao backend e associadas pelo imageId.
+- A lista busca todos os estados ativos, além das páginas carregadas do histórico. Se um pedido aparecer em duas consultas concorrentes, prevalece a versão maior.
+- Leituras antigas não podem sobrescrever uma reconciliação iniciada depois. Atualização periódica, foco e reconexão recuperam alterações de outros clientes.
+- A API não expõe totais/cliente/endereço à conta KITCHEN. O painel não inventa valores para preencher esse DTO.
 
-| Método / rota                             | Uso                                            | Perfil mínimo sugerido                                       |
-| ----------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
-| `POST /sessions`                          | Autenticar funcionário                         | Público com limitação de tentativas                          |
-| `DELETE /sessions/current`                | Encerrar sessão                                | Autenticado                                                  |
-| `GET /staff/orders?status=...&cursor=...` | Listar pedidos paginados                       | Atendimento, cozinha ou gestor; DTO filtrado por perfil      |
-| `GET /staff/orders/{id}`                  | Detalhar pedido autorizado                     | Atendimento/gestor; cozinha recebe somente dados de produção |
-| `POST /staff/orders`                      | Registrar pedido manual                        | Atendimento/gestor                                           |
-| `POST /staff/orders/{id}/accept`          | Aceitar                                        | Atendimento/gestor                                           |
-| `POST /staff/orders/{id}/prepare`         | Iniciar preparo                                | Cozinha/gestor                                               |
-| `POST /staff/orders/{id}/ready`           | Marcar pronto                                  | Cozinha/gestor                                               |
-| `POST /staff/orders/{id}/cancel`          | Cancelar com motivo                            | Gestor ou permissão explícita                                |
-| `POST /staff/orders/{id}/assign`          | Atribuir/reassociar entregador antes da coleta | Expedição/gestor                                             |
-| `POST /staff/orders/{id}/pickup-complete` | Confirmar retirada no balcão                   | Atendimento/gestor                                           |
-| `GET /staff/drivers`                      | Listar disponibilidade e cargas                | Expedição/gestor                                             |
-| `PATCH /staff/drivers/{id}/availability`  | Administrar novas coletas                      | Gestor                                                       |
-| `GET /catalog`                            | Cardápio e regras publicáveis                  | Conforme contexto do app                                     |
-| `PATCH /staff/products/{id}`              | Editar preço/disponibilidade                   | Gestor                                                       |
-| `POST /staff/products`                    | Cadastrar sabor, preços e disponibilidade      | Gestor                                                       |
-| `POST /staff/product-images`              | Enviar e otimizar uma foto de produto          | Gestor                                                       |
-| `GET /staff/promotions`                   | Listar promoções, vigência e consumo           | Atendimento/gestor                                           |
-| `POST /staff/promotions`                  | Criar desconto e limites                       | Gestor                                                       |
-| `PATCH /staff/promotions/{id}`            | Editar ou pausar com versão esperada           | Gestor                                                       |
-| `POST /orders/quote`                      | Cotar itens e promoção no servidor             | Cliente/atendimento conforme estabelecimento                 |
-| `PATCH /staff/store`                      | Abrir/pausar loja e preferências               | Gestor                                                       |
+## Continuidade
 
-Retirada pelo entregador, início da rota, entrega e tentativa/devolução passam pelos comandos autenticados do app de entregas (`/driver/deliveries/{id}/collect`, `/start`, `/complete`, `/issue`, `/return`) propostos no repositório do entregador. Os botões “Simular” deste painel não devem virar comandos irrestritos em produção.
+Integração dos aplicativos Android cliente e entregador permanece para alterações próprias em seus repositórios. O backend já tem endpoints para esses perfis. Nenhuma etapa exclusiva do entregador é simulada pelo gerente nesta versão.
 
-## Pedido e entrega são estados diferentes
-
-| Pedido do painel   | Entrega                               | Significado                                          |
-| ------------------ | ------------------------------------- | ---------------------------------------------------- |
-| `NEW`              | Nenhuma                               | Aguardando aceite da pizzaria                        |
-| `CONFIRMED`        | Nenhuma                               | Fila da cozinha                                      |
-| `PREPARING`        | Nenhuma                               | Em produção                                          |
-| `READY`            | Nenhuma                               | Pronto; ainda sem motoboy ou retirada no balcão      |
-| `READY`            | `ASSIGNED`                            | Motoboy atribuído, ainda sem coleta                  |
-| `READY`            | `COLLECTED`                           | Coletado; aguardando início da rota                  |
-| `OUT_FOR_DELIVERY` | `ON_ROUTE`                            | Saiu para o cliente                                  |
-| `RETURNING`        | `RETURNING`                           | Tentativa sem sucesso; carga ainda com o motoboy     |
-| `DELIVERED`        | `DELIVERED`, ou nenhuma para retirada | Recebimento concluído                                |
-| `RETURNED`         | `RETURNED`                            | Devolvido à pizzaria; não conta como venda concluída |
-| `CANCELLED`        | Sem atribuição ativa                  | Cancelado antes da coleta                            |
-
-O app cliente precisa de uma projeção própria desses estados. Antes da integração, alinhar seus enums existentes e a comunicação para cancelamento, retorno, estorno e reentrega. Não converter `RETURNED` silenciosamente em `DELIVERED` nem confundir `CONFIRMED` com confirmação de pagamento.
-
-## Exemplo de comando de preparo
-
-```http
-POST /staff/orders/{id}/prepare
-Content-Type: application/json
-Idempotency-Key: <identificador único da tentativa lógica>
-
-{"expectedVersion":3}
-```
-
-O servidor deve, em uma transação, validar a sessão e o estabelecimento, conferir perfil e versão, aplicar a transição, gravar o evento e retornar o pedido atualizado. Repetir a mesma chave não deve duplicar a ação. Versão desatualizada deve retornar conflito (`409`) com indicação do estado atual para reconciliação.
-
-Itens de criação carregam referências de produto/sabor, tamanho, borda e quantidade. O servidor consulta o catálogo e calcula totais em centavos; os itens do pedido preservam o preço e a descrição contratados. Mudanças no catálogo não reprecificam pedidos já aceitos.
-
-## Cadastro e fotos na API
-
-A versão 0.3 adiciona `ADD_PRODUCT` e o campo opcional `Product.photo`. Na demo, esse campo contém a imagem otimizada como data URL local, incluída no snapshot e na exportação JSON. O original não é salvo. A atualização do produto e da foto acontece na mesma transação IndexedDB; cancelar a edição não grava a prévia. O banco local usa versão 4 para impedir escritas de abas antigas que removeriam campos desconhecidos; o snapshot usa schema 3.
-
-Na API, substituir o data URL por uma referência de imagem em storage (por exemplo, R2/S3) e URL adequada à leitura do cardápio. O endpoint de upload deve autenticar o gestor, conferir loja, tamanho e conteúdo real, decodificar e otimizar no servidor. A validação e a compressão do navegador melhoram a experiência, mas não substituem as do servidor. Associar a nova imagem ao produto ao confirmar o cadastro, e tratar descarte de uploads abandonados e exclusão de imagens substituídas sem afetar pedidos existentes.
-
-O cadastro deve validar os preços em centavos e impedir nomes duplicados na mesma categoria/loja sob concorrência, seguindo a normalização acordada. Edição precisa de versão esperada, inclusive ao trocar foto ou disponibilidade. Produtos novos devem aparecer no catálogo dos apps após a confirmação da API. Fotos não devem ser copiadas para cada item do pedido, evento de produção ou notificação da cozinha.
-
-## Categorias, bordas e composição dos combos
-
-`src/domain/catalog.ts` define `Product.category` (`PIZZA`, `CRUST`, `DRINK`, `COMBO`), `pizzaGroup` (`TRADITIONAL` ou `SPECIAL`), referências de bordas e composição fixa dos combos. Meio a meio usa um item `PIZZA` com dois `flavorIds`, sem gerar um novo produto para cada combinação. Bordas têm preço único, somado uma vez por pizza; `NONE` representa a borda sem recheio, gratuita. Os IDs `CREAM` e `CHEDDAR` são preservados na migração dos exemplos antigos.
-
-`Product.combo` contém de 2 a 6 linhas `PIZZA`/`DRINK`, com referências de catálogo, tamanho, borda, quantidade e observações. Um item de pedido `COMBO` envia apenas `productId`, `quantity` e `note`. O servidor deve resolver e validar todos os componentes e sua disponibilidade na mesma transação do pedido, aplicar o preço fechado e salvar um snapshot `items[].components`. As quantidades do snapshot são por combo; a interface multiplica por `items[].quantity` apenas para exibir a produção. Não cobrar os componentes novamente nem reaplicar descontos de pizza ao combo.
-
-O snapshot da receita deve sobreviver a pausas, mudanças de preço/nome, alterações e eventual remoção dos produtos. Novas vendas respeitam a disponibilidade de todos os componentes. No catálogo, referências devem existir e corresponder à categoria correta; não permitir combos recursivos. A proposta inicial tem composição fixa e preço único; opções de troca dentro do combo e borda por tamanho exigem regras adicionais a combinar com a pizzaria.
-
-Ao migrar o schema 2, preservar os dados anteriores, classificar sabores sem grupo como tradicionais e cadastrar as bordas existentes. O limite local passa a 200 produtos para permitir a migração inclusive de um catálogo anterior com 100 produtos. A API deve ter limites próprios definidos por estabelecimento.
-
-O cadastro explicita inteira/meio a meio e permite editar cada linha da receita. Essa escolha continua representada por um ou dois `flavorIds`, sem campo adicional no banco. `comboPriceComparison` calcula a referência atual dos itens avulsos (incluindo quantidades e bordas), a diferença em centavos e o percentual apresentado. Essa referência não altera `Product.prices` nem é um desconto adicional no pedido: o item `COMBO` já cobra o preço final cadastrado. A comparação ignora a pausa apenas para permitir consultar a receita no cadastro; a venda mantém todas as validações de disponibilidade.
-
-O preço salvo deve permanecer fixo até uma edição explícita, mesmo quando sabores, bordas ou bebidas mudarem de valor. Comparações de economia exibidas pela API devem usar preços avulsos atuais e identificar essa referência. Os snapshots dos pedidos permanecem inalterados. Este ajuste não exige nova migração: schema 3 / IndexedDB 4 continuam em uso.
-
-## Promoções e reservas no servidor
-
-A demo usa schema 3 e migra os schemas 1 e 2 sem recalcular os pedidos antigos. `src/domain/promotions.ts` define desconto percentual/valor fixo, vigência, cota e snapshot do desconto; `quoteOrder` calcula o desconto por pizza, excluindo borda, bebidas, combos e entrega. A proposta atual é selecionar uma única promoção por pedido, válida para todos os sabores/tamanhos. Confirmar essa política com a pizzaria antes da integração.
-
-Cada pedido guarda `discount` em centavos e um snapshot `promotion`: identidade, versão, nome, regra, horário de aplicação, quantidade e alocação por item. A versão local deriva o consumo dos pedidos: concluídos são vendidos; em andamento são reservados; cancelados/devolvidos não ocupam cota. Uma tentativa em retorno continua reservada até a devolução ser confirmada. Mudanças da campanha nunca recalculam snapshots históricos.
-
-Na API, consultar preços, conferir vigência com relógio do servidor, reservar a cota e criar o pedido na **mesma transação PostgreSQL**. Usar bloqueio/atualização condicional para impedir que pedidos do painel e dos Android consumam simultaneamente a última unidade. No cancelamento/devolução, liberar a reserva exatamente uma vez; na conclusão, convertê-la em venda sem liberar capacidade. Usar chaves de idempotência e restrições de integridade. Uma cotação não reserva estoque promocional por si só.
-
-O cliente envia referências de itens e promoção, nunca um desconto confiável. O servidor recalcula valores e compara com uma cotação versionada, devolvendo conflito se o valor ou a distribuição da cota tiver mudado, para revisão explícita. A `signature` local não é assinatura criptográfica, autenticação ou garantia de preço. Não transportá-la como prova de cobrança. Se houver carrinhos reservados ou pagamentos pendentes, definir duração e expiração da reserva no servidor; isso ainda não existe na demo.
-
-Publicar `promotion.updated` e `promotion.usage.changed` após confirmar as transações, restritos por estabelecimento. Somar também pedidos arquivados no consumo vitalício da campanha. Registrar histórico de edições e quem concedeu/alterou a oferta; somente gestores devem administrar promoções.
-
-## Eventos e reconexão
-
-Publicar eventos autenticados como `order.created`, `order.updated`, `delivery.updated`, `driver.availability.changed` e `catalog.updated`, restritos por loja e perfil. WebSocket pode avisar a mudança; a consulta REST e o histórico versionado devem permitir recuperar estado após reconexão ou eventos perdidos. Não compartilhar endereços/pagamentos em um canal de cozinha.
-
-`BroadcastChannel` atual só notifica abas da mesma origem. IndexedDB serializa as operações locais e `version` evita comandos de pedido baseados em uma versão antiga. Isso não implementa idempotência, fila offline nem sincronização distribuída de produção. O campo `demoId` identifica um reinício local, não um tenant ou autorização.
-
-Ao trocar a persistência, manter `PanelRepository` como fronteira e usar DTOs validados. Implementar estados explícitos de envio, erro, conflito e confirmação do servidor. Não armazenar senhas ou tokens de longa duração no snapshot da demo.
-
-## Decisões a fechar com a pizzaria
-
-- Cardápio real, tamanhos, número de sabores e regra de meia pizza; bordas e adicionais além dos exemplos.
-- Aceite manual/automático, prazo/meta e critérios de prioridade da cozinha.
-- Taxa por bairro/distância, comissão do motoboy e limites de carga.
-- Política de cancelamento depois da coleta, ausência do cliente e reentrega.
-- Pagamentos, comprovantes, troco, estornos e conciliação com a maquininha/gateway.
-- Perfis de acesso, dispositivos, impressão térmica e conexão da loja.
-
-Referências de implementação: [OpenAPI no NestJS](https://docs.nestjs.com/openapi/introduction), [autorização no NestJS](https://docs.nestjs.com/security/authorization), [Next.js App Router](https://nextjs.org/docs/app).
+Os requisitos ainda sujeitos à validação da pizzaria (preço do meio a meio, área/taxa de entrega, pagamentos, fiscal, fotos reais, acesso de funcionários) permanecem decisões de produto; esta integração usa os contratos existentes da API.
