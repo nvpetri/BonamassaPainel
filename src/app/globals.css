@@ -15,6 +15,394 @@
   --radius: 12px;
   color-scheme: dark;
 }
+.sidebar {
+  overflow-y: auto;
+}
+.promotion-intro {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 26px;
+  margin-bottom: 22px;
+  border: 1px solid #51402b;
+  border-radius: 12px;
+  background: linear-gradient(115deg, #30251b, #201e1a 80%);
+}
+.promotion-intro-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  color: var(--gold);
+  border: 1px solid #6d4d2a;
+  border-radius: 15px;
+  background: #3a2b1b;
+}
+.promotion-intro > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.promotion-intro .eyebrow {
+  color: var(--gold);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+}
+.promotion-intro h2 {
+  font-size: 23px;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
+  margin: 7px 0;
+}
+.promotion-intro p {
+  color: #c0b3a3;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+.promotion-intro > .button {
+  flex-shrink: 0;
+}
+.promotion-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.promotion-metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px 22px;
+  border-radius: 10px;
+}
+.promotion-metrics span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.promotion-metrics span svg {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.promotion-metrics strong {
+  font-size: 29px;
+  letter-spacing: -0.6px;
+}
+.promotion-metrics small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.promotion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 325px), 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.promotion-card {
+  min-width: 0;
+  padding: 23px;
+  border: 1px solid #4b3c2b;
+  background: var(--surface);
+  border-radius: 12px;
+}
+.promotion-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 23px;
+}
+.promotion-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+  font-size: 9px;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+.promotion-card h3 {
+  font-size: 18px;
+  margin: 0 0 13px;
+  overflow-wrap: anywhere;
+}
+.promotion-discount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 13px;
+  color: var(--gold);
+  font-size: 37px;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  font-weight: 700;
+}
+.promotion-discount > span {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.promotion-card > .field-hint {
+  margin: 13px 0 22px;
+  color: var(--muted);
+}
+.promotion-validity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 17px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+.promotion-validity > svg {
+  flex-shrink: 0;
+  color: var(--gold);
+}
+.promotion-validity div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+}
+.promotion-validity strong {
+  font-weight: 500;
+  color: var(--text);
+}
+.promotion-usage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 21px 0 17px;
+}
+.promotion-usage > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-right: 1px solid var(--border);
+  padding-left: 14px;
+}
+.promotion-usage > div:first-child {
+  padding-left: 0;
+}
+.promotion-usage > div:last-child {
+  border-right: 0;
+}
+.promotion-usage strong {
+  font-size: 23px;
+  font-weight: 600;
+}
+.promotion-usage span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.promotion-card progress {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #3c3328;
+  accent-color: var(--gold);
+}
+.promotion-card progress::-webkit-progress-bar {
+  background: #3c3328;
+}
+.promotion-card progress::-webkit-progress-value {
+  background: var(--gold);
+  border-radius: 10px;
+}
+.promotion-card progress::-moz-progress-bar {
+  background: var(--gold);
+}
+.promotion-progress-caption {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+.promotion-card-actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border);
+}
+.promotion-card-actions > .button {
+  flex: 1;
+}
+.promotion-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 21px 4px 4px;
+  color: var(--muted);
+}
+.promotion-help > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--gold);
+}
+.promotion-help p {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0;
+  max-width: 1000px;
+}
+.promotion-form {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.promotion-form > .field-hint {
+  margin: -6px 0 0;
+}
+.promotion-limits {
+  margin: 0;
+  min-width: 0;
+  border: 1px solid #51412e;
+  border-radius: 9px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.promotion-limits legend {
+  padding: 0 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #edd5b3;
+}
+.promotion-limits .check-field {
+  margin: 0;
+}
+.promotion-limits .field-hint {
+  margin: 0;
+}
+.promotion-preview {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 17px;
+  border-radius: 8px;
+  background: #302719;
+  border: 1px solid #594325;
+  color: var(--gold);
+}
+.promotion-preview > svg {
+  flex-shrink: 0;
+}
+.promotion-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.promotion-preview strong {
+  font-size: 13px;
+}
+.promotion-preview span {
+  color: #cbb99e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.order-promotion {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px dashed #725231;
+}
+.promotion-applied {
+  color: var(--green);
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.promotion-total {
+  color: var(--green);
+}
+.promotion-detail-count {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.card-promotion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 13px 0 0;
+  color: var(--green);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.card-promotion span {
+  overflow-wrap: anywhere;
+}
+.card-promotion b {
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .promotion-intro {
+    flex-wrap: wrap;
+  }
+  .promotion-intro > .button {
+    margin-left: auto;
+  }
+}
+@media (max-width: 650px) {
+  .promotion-intro {
+    padding: 20px;
+    gap: 14px;
+  }
+  .promotion-intro-icon {
+    display: none;
+  }
+  .promotion-intro > div:nth-child(2) {
+    flex-basis: 100%;
+  }
+  .promotion-intro h2 {
+    font-size: 21px;
+  }
+  .promotion-intro > .button {
+    width: 100%;
+    margin-top: 4px;
+  }
+  .promotion-metrics {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .promotion-metrics > div {
+    padding: 16px 18px;
+    gap: 7px;
+  }
+  .promotion-metrics strong {
+    font-size: 26px;
+  }
+  .promotion-form {
+    padding: 18px;
+  }
+  .promotion-form .form-row {
+    flex-wrap: wrap;
+    display: flex;
+  }
+  .promotion-form .form-row > .field {
+    width: 100%;
+  }
+  .promotion-card {
+    padding: 20px;
+  }
+}
 * {
   box-sizing: border-box;
 }

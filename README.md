@@ -2,7 +2,7 @@
 
 Painel web da pizzaria, com **recebimento de pedidos, cozinha (KDS) e expedição**. Interface em português, com a identidade preta, vermelha e dourada dos aplicativos Bonamassa.
 
-**Versão 0.1.0-demo:** funcional com dados locais de demonstração. Ainda não há API central, autenticação ou conexão com os aplicativos Android. Nenhum pedido, pagamento ou mensagem real é enviado.
+**Versão 0.2.0-demo:** funcional com dados locais de demonstração e promoções por prazo ou quantidade de pizzas. Ainda não há API central, autenticação ou conexão com os aplicativos Android. Nenhum pedido, pagamento ou mensagem real é enviado.
 
 ![Painel de pedidos](docs/pedidos.png)
 
@@ -48,12 +48,32 @@ O terminal precisa continuar aberto enquanto o servidor estiver sendo usado. Enc
 | `/cozinha`       | A preparar, em preparo e prontos; observações, tempo de espera e tela cheia                                       |
 | `/entregas`      | Disponibilidade, atribuição e troca de motoboy antes da coleta; simulação de retirada, saída, entrega e devolução |
 | `/cardapio`      | Busca, disponibilidade, edição de nomes, descrição e preços por tamanho                                           |
+| `/promocoes`     | Desconto percentual ou em reais por pizza, agendamento, prazo, limite de unidades, pausa e acompanhamento         |
 | `/historico`     | Concluídos, cancelados e devolvidos; busca, eventos e exportação CSV                                              |
 | `/configuracoes` | Meta de tempo, taxa padrão, exportação JSON e reinício confirmado da demo                                         |
 
 Os pedidos aceitam até dois sabores, três tamanhos, bordas, bebidas, quantidade e observações. O maior preço entre os sabores determina a pizza; a borda é somada uma vez por unidade. Valores são calculados em centavos. Essa regra, os sabores e todos os preços precisam ser aprovados pela pizzaria.
 
-Pagamentos são **registros simulados**: antecipado, dinheiro com troco ou cartão na maquininha. A conclusão exige recebedor e, no dinheiro/cartão, confirmação do recebimento. A taxa de entrega exibida é cobrada do cliente; não representa automaticamente a remuneração do motoboy.
+Pagamentos são **registros simulados**: antecipado, dinheiro com troco ou cartão na maquininha. A conclusão exige recebedor e, no dinheiro/cartão com valor a cobrar, confirmação do recebimento. A taxa de entrega exibida é cobrada do cliente; não representa automaticamente a remuneração do motoboy.
+
+## Promoções
+
+Em **Promoções → Nova promoção**, informe um nome, escolha desconto em **%** ou **R$ por pizza** e defina quando começa. Escolha **data/horário de encerramento**, **quantidade máxima de pizzas**, ou ambos. Os horários são de Brasília, mesmo em um computador configurado em outro fuso.
+
+Exemplos: 15% até domingo às 23h; R$ 10 nas primeiras 50 pizzas; 20% nas primeiras 30 pizzas até o fim da noite. Se houver dois limites, a promoção deixa de aceitar novos usos no primeiro atingido.
+
+No **Novo pedido**, adicione os itens e selecione a **Promoção do pedido** no resumo. O sistema não escolhe uma oferta automaticamente e não acumula promoções. O resumo mostra o desconto, o total e quantas pizzas foram contempladas. Borda recheada, bebidas e taxa de entrega mantêm o preço normal.
+
+- O desconto considera todos os sabores e tamanhos. Meia a meia conta uma pizza e usa o preço do sabor mais caro. Percentuais são arredondados em centavos por unidade; desconto fixo não ultrapassa o preço da pizza.
+- A quantidade é de pizzas com desconto, não de pedidos ou fatias. Se restam duas unidades e o pedido contém três pizzas, as primeiras duas na ordem dos itens recebem a oferta; a terceira mantém o preço normal.
+- Pedidos em andamento **reservam** as unidades. A conclusão converte reserva em **venda**. Cancelamento e devolução confirmada liberam a reserva; registrar um problema na entrega ainda não libera unidades.
+- **Pausar**, editar ou encerrar a promoção não altera o preço de pedidos existentes. Editar também não reinicia o contador. Crie outra promoção para começar uma nova campanha com contador independente.
+- O limite não pode ser reduzido abaixo do que já foi vendido ou reservado. A última unidade é disputada em uma transação local: duas abas não conseguem ultrapassar a cota. Se preço ou disponibilidade mudarem durante o envio, o pedido é recusado e o resumo precisa ser conferido novamente.
+- O histórico e o CSV preservam nome da promoção, desconto e número de pizzas contempladas, inclusive em cancelamentos. Os indicadores de descontos concedidos e pizzas vendidas consideram somente pedidos concluídos.
+
+![Tela de promoções](docs/promocoes.png)
+
+Ao atualizar da versão 0.1, os dados são migrados automaticamente para o schema 2, preservando pedidos, preços, eventos e preferências. Recarregue as abas abertas depois de atualizar o servidor. Não é necessário reiniciar a demonstração.
 
 ## Roteiro para mostrar ao dono
 
@@ -75,6 +95,7 @@ Também é possível simular uma chegada com um clique, registrar tentativa sem 
 - `localhost:3000`, `127.0.0.1:3000`, outra porta, outro navegador ou outro dispositivo **têm dados separados**. Abrir a cozinha em um tablet não a conecta ao computador nesta versão.
 - O snapshot tem schema e identificador da demonstração. Dados inválidos geram uma tela de recuperação; não são apagados automaticamente.
 - Há um limite de 500 pedidos na demo. O CSV exporta os pedidos do histórico conforme os filtros. O JSON exporta a cópia completa para consulta; importação ainda não implementada.
+- Há um limite de 100 promoções na demo. O controle de quantidade vale apenas para as abas que compartilham o mesmo IndexedDB. O limite compartilhado com os apps Android depende da futura API central.
 - A hora exibida usa `America/Sao_Paulo`; os tempos são calculados a partir do relógio do dispositivo. Os dados fictícios iniciais são ancorados na primeira abertura, sem reinício diário automático.
 - Não há Service Worker nem instalação PWA: após carregar, as ações locais não dependem de internet, mas recarregar ainda depende do servidor do painel.
 

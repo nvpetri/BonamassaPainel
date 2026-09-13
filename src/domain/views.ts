@@ -3,6 +3,7 @@ export const views = [
   "cozinha",
   "entregas",
   "cardapio",
+  "promocoes",
   "historico",
   "configuracoes",
 ] as const;
@@ -29,6 +30,11 @@ export const viewInfo: Record<
   cardapio: {
     title: "Cardápio",
     subtitle: "Seus sabores, preços e disponibilidade em um só lugar.",
+    section: "Gestão",
+  },
+  promocoes: {
+    title: "Promoções",
+    subtitle: "Descontos com prazo, quantidade e acompanhamento.",
     section: "Gestão",
   },
   historico: {

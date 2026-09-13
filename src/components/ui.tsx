@@ -303,10 +303,18 @@ export function OrderCard({
           {order.note}
         </div>
       )}
+      {!kitchen && order.promotion && (
+        <div className="card-promotion">
+          <span>{order.promotion.name}</span>
+          <b>− {brl(order.discount)}</b>
+        </div>
+      )}
       {!kitchen && (
         <div className="card-total">
           <span>
-            {order.payment === "PREPAID" ? (
+            {order.total === 0 ? (
+              "Sem valor a cobrar"
+            ) : order.payment === "PREPAID" ? (
               <>
                 <Check size={12} /> Pago · demo
               </>

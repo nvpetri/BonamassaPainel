@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  discountPerPizza,
+  promotionSchema,
+  promotionSnapshotSchema,
+  promotionStatus,
+  promotionUsage,
+  type Promotion,
+  type PromotionSnapshot,
+} from "./promotions";
 
 export const moneySchema = z.number().int().min(0).max(10_000_000);
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -73,7 +82,9 @@ export const orderSchema = z
     driverId: z.string().nullable(),
     items: z.array(itemSchema).min(1).max(30),
     fee: moneySchema,
-    total: moneySchema.positive(),
+    discount: moneySchema,
+    promotion: promotionSnapshotSchema.nullable(),
+    total: moneySchema,
     payment: paymentSchema,
     cashTendered: moneySchema,
     paymentCollected: z.boolean(),
@@ -86,12 +97,32 @@ export const orderSchema = z
     if (
       o.total !==
       o.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) +
-        o.fee
+        o.fee -
+        o.discount
     )
       ctx.addIssue({
         code: "custom",
         message: "Total do pedido não corresponde aos itens.",
       });
+    if (
+      o.discount !== (o.promotion?.amount ?? 0) ||
+      (o.promotion &&
+        (o.promotion.appliedAt !== o.createdAt ||
+          o.promotion.lines.some((line) => {
+            const item = o.items.find((item) => item.id === line.itemId);
+            return (
+              !item ||
+              line.quantity > item.quantity ||
+              line.baseUnitPrice > item.unitPrice
+            );
+          })))
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Desconto não corresponde ao pedido.",
+      });
+    if (new Set(o.items.map((item) => item.id)).size !== o.items.length)
+      ctx.addIssue({ code: "custom", message: "Itens duplicados no pedido." });
     if (o.mode === "PICKUP" && (o.fee !== 0 || o.driverId || o.deliveryStatus))
       ctx.addIssue({
         code: "custom",
@@ -150,7 +181,7 @@ export const orderSchema = z
   });
 export const stateSchema = z
   .object({
-    schema: z.literal(1),
+    schema: z.literal(2),
     demoId: text(100),
     revision: z.number().int().nonnegative(),
     nextNumber: z.number().int().positive(),
@@ -161,10 +192,16 @@ export const stateSchema = z
     }),
     products: z.array(productSchema).min(1).max(100),
     drivers: z.array(driverSchema).max(50),
+    promotions: z.array(promotionSchema).max(100),
     orders: z.array(orderSchema).max(500),
   })
   .superRefine((state, ctx) => {
-    for (const list of [state.products, state.drivers, state.orders]) {
+    for (const list of [
+      state.products,
+      state.drivers,
+      state.orders,
+      state.promotions,
+    ]) {
       if (new Set(list.map((x) => x.id)).size !== list.length)
         ctx.addIssue({
           code: "custom",
@@ -185,6 +222,28 @@ export const stateSchema = z
       )
     )
       ctx.addIssue({ code: "custom", message: "Entregador não encontrado." });
+    if (
+      state.orders.some(
+        (o) =>
+          o.promotion &&
+          !state.promotions.some((p) => p.id === o.promotion!.id),
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Promoção do pedido não encontrada.",
+      });
+    for (const promotion of state.promotions) {
+      const usage = promotionUsage(promotion, state.orders);
+      if (
+        promotion.pizzaLimit !== null &&
+        usage.sold + usage.reserved > promotion.pizzaLimit
+      )
+        ctx.addIssue({
+          code: "custom",
+          message: "O limite promocional não cobre as pizzas já utilizadas.",
+        });
+    }
   });
 
 const pizzaDraft = z.object({
@@ -210,6 +269,7 @@ export const draftSchema = z.object({
   payment: paymentSchema,
   cashTendered: moneySchema,
   fee: moneySchema.max(10000),
+  promotionId: text(100).nullable().optional(),
   items: z
     .array(z.discriminatedUnion("kind", [pizzaDraft, drinkDraft]))
     .min(1)
@@ -235,7 +295,7 @@ export type OrderAction =
   | "RETURN"
   | "CANCEL";
 export type Command =
-  | { type: "CREATE"; draft: Draft }
+  | { type: "CREATE"; draft: Draft; expectedQuote?: string }
   | {
       type: "ORDER";
       id: string;
@@ -249,6 +309,7 @@ export type Command =
   | { type: "STORE"; open: boolean }
   | { type: "DRIVER"; id: string; available: boolean }
   | { type: "PRODUCT"; product: Product; previous?: Product }
+  | { type: "PROMOTION"; promotion: Promotion; expectedVersion: number | null }
   | { type: "SETTINGS"; targetMinutes: number; defaultFee: number };
 
 export const sizeLabels = {
@@ -358,6 +419,97 @@ export function priceItems(
   });
 }
 
+export function quoteOrder(
+  state: State,
+  draft: Pick<Draft, "items" | "mode" | "fee" | "promotionId">,
+  now: number,
+) {
+  const items = priceItems(state.products, draft.items);
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0,
+  );
+  const fee = draft.mode === "PICKUP" ? 0 : draft.fee;
+  let promotion: PromotionSnapshot | null = null;
+  if (draft.promotionId) {
+    const p = state.promotions.find((p) => p.id === draft.promotionId);
+    requireThat(p, "Promoção não encontrada. Revise o pedido.");
+    const status = promotionStatus(p, state.orders, now);
+    requireThat(
+      status === "Ativa",
+      `Promoção ${status.toLowerCase()}. Escolha outra promoção ou remova o desconto.`,
+    );
+    let available = promotionUsage(p, state.orders).remaining ?? Infinity;
+    const lines: PromotionSnapshot["lines"] = [];
+    draft.items.forEach((item, index) => {
+      if (item.kind !== "PIZZA" || available <= 0) return;
+      const baseUnitPrice = items[index].unitPrice - crusts[item.crust].price;
+      const discountPerUnit = discountPerPizza(p.kind, p.value, baseUnitPrice);
+      const quantity = Math.min(item.quantity, available);
+      if (discountPerUnit <= 0) return;
+      lines.push({
+        itemId: items[index].id,
+        quantity,
+        baseUnitPrice,
+        discountPerUnit,
+      });
+      available -= quantity;
+    });
+    requireThat(
+      lines.length,
+      "Adicione uma pizza elegível para usar esta promoção.",
+    );
+    promotion = {
+      id: p.id,
+      version: p.version,
+      name: p.name,
+      kind: p.kind,
+      value: p.value,
+      appliedAt: now,
+      pizzaQuantity: lines.reduce((sum, line) => sum + line.quantity, 0),
+      amount: lines.reduce(
+        (sum, line) => sum + line.quantity * line.discountPerUnit,
+        0,
+      ),
+      lines,
+    };
+  }
+  const discount = promotion?.amount ?? 0;
+  const total = subtotal + fee - discount;
+  // Exclude the clock from the signature, but include the exact allocation and promotion revision.
+  const signature = JSON.stringify({
+    items,
+    fee,
+    total,
+    promotion: promotion ? { ...promotion, appliedAt: 0 } : null,
+  });
+  return { items, subtotal, fee, total, discount, promotion, signature };
+}
+
+/** Upgrade existing local data without repricing or replacing any historic order. */
+export function migrateState(raw: unknown): State {
+  if (
+    typeof raw === "object" &&
+    raw !== null &&
+    "schema" in raw &&
+    raw.schema === 1 &&
+    "orders" in raw &&
+    Array.isArray(raw.orders)
+  ) {
+    return stateSchema.parse({
+      ...raw,
+      schema: 2,
+      promotions: [],
+      orders: raw.orders.map((order) => ({
+        ...order,
+        discount: 0,
+        promotion: null,
+      })),
+    });
+  }
+  return stateSchema.parse(raw);
+}
+
 export function applyCommand(
   current: State,
   command: Command,
@@ -375,11 +527,16 @@ export function applyCommand(
       "Limite de 500 pedidos desta demonstração. Exporte o histórico e reinicie a demo.",
     );
     const draft = draftSchema.parse(command.draft);
-    const items = priceItems(state.products, draft.items);
-    const fee = draft.mode === "PICKUP" ? 0 : draft.fee;
-    const total =
-      items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) +
-      fee;
+    const { items, fee, total, discount, promotion, signature } = quoteOrder(
+      state,
+      draft,
+      now,
+    );
+    requireThat(
+      (!draft.promotionId && command.expectedQuote === undefined) ||
+        command.expectedQuote === signature,
+      "O preço ou a disponibilidade da promoção mudou. Confira o resumo atualizado antes de criar o pedido.",
+    );
     requireThat(
       draft.mode === "PICKUP" || draft.address.length >= 5,
       "Informe o endereço completo para entrega.",
@@ -396,15 +553,25 @@ export function applyCommand(
       items,
       fee,
       total,
+      discount,
+      promotion,
       cashTendered: draft.payment === "CASH" ? draft.cashTendered : 0,
       status: "NEW",
       deliveryStatus: null,
       driverId: null,
       recipient: "",
-      paymentCollected: draft.payment === "PREPAID",
+      paymentCollected: draft.payment === "PREPAID" || total === 0,
       createdAt: now,
       updatedAt: now,
-      events: [{ id: `${id}-created`, at: now, label: "Pedido recebido" }],
+      events: [
+        {
+          id: `${id}-created`,
+          at: now,
+          label: promotion
+            ? `Pedido recebido · Promoção ${promotion.name}: ${brl(discount)} em ${promotion.pizzaQuantity} pizza(s)`
+            : "Pedido recebido",
+        },
+      ],
     });
   } else if (command.type === "ORDER") {
     const order = state.orders.find((o) => o.id === command.id);
@@ -499,7 +666,9 @@ export function applyCommand(
           "Informe quem recebeu o pedido (até 80 caracteres).",
         );
         requireThat(
-          order.payment === "PREPAID" || command.paymentCollected,
+          order.total === 0 ||
+            order.payment === "PREPAID" ||
+            command.paymentCollected,
           "Confirme o recebimento do pagamento.",
         );
         order.recipient = recipient;
@@ -574,6 +743,32 @@ export function applyCommand(
       "A categoria deste produto não pode ser alterada.",
     );
     state.products[index] = product;
+  } else if (command.type === "PROMOTION") {
+    const promotion = promotionSchema.parse(command.promotion);
+    const index = state.promotions.findIndex((p) => p.id === promotion.id);
+    requireThat(
+      index >= 0
+        ? state.promotions[index].version === command.expectedVersion
+        : command.expectedVersion === null,
+      "A promoção mudou em outra tela. Feche a edição e confira os dados atuais.",
+    );
+    requireThat(
+      index >= 0 || state.promotions.length < 100,
+      "Limite de 100 promoções nesta demonstração.",
+    );
+    const usage = promotionUsage(promotion, state.orders);
+    requireThat(
+      promotion.pizzaLimit === null ||
+        promotion.pizzaLimit >= usage.sold + usage.reserved,
+      `O limite deve cobrir as ${usage.sold + usage.reserved} pizzas já vendidas ou reservadas.`,
+    );
+    requireThat(
+      index >= 0 || promotion.endsAt === null || promotion.endsAt > now,
+      "Escolha um encerramento no futuro.",
+    );
+    promotion.version = index < 0 ? 0 : state.promotions[index].version + 1;
+    if (index < 0) state.promotions.unshift(promotion);
+    else state.promotions[index] = promotion;
   } else if (command.type === "SETTINGS")
     state.settings = {
       targetMinutes: command.targetMinutes,
@@ -599,6 +794,9 @@ export function csvOrders(orders: Order[]) {
         "Modalidade",
         "Total (R$)",
         "Pagamento",
+        "Promoção",
+        "Desconto (R$)",
+        "Pizzas promocionais",
       ],
       ...orders.map((o) => [
         o.number,
@@ -608,6 +806,9 @@ export function csvOrders(orders: Order[]) {
         o.mode === "DELIVERY" ? "Entrega" : "Retirada",
         (o.total / 100).toFixed(2).replace(".", ","),
         paymentLabels[o.payment],
+        o.promotion?.name ?? "",
+        (o.discount / 100).toFixed(2).replace(".", ","),
+        o.promotion?.pizzaQuantity ?? 0,
       ]),
     ]
       .map((row) => row.map(safe).join(";"))

@@ -1,7 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import {
   applyCommand,
-  stateSchema,
+  migrateState,
   type Command,
   type State,
 } from "../domain/model";
@@ -19,9 +19,9 @@ export interface PanelRepository {
 let database: Promise<IDBPDatabase<DemoDatabase>> | undefined;
 function db() {
   if (!database) {
-    database = openDB<DemoDatabase>("bonamassa-painel-demo", 1, {
-      upgrade(database) {
-        database.createObjectStore("state");
+    database = openDB<DemoDatabase>("bonamassa-painel-demo", 2, {
+      upgrade(database, oldVersion) {
+        if (oldVersion < 1) database.createObjectStore("state");
       },
       blocking(_current, _blocked, event) {
         (event.target as IDBDatabase).close();
@@ -42,23 +42,28 @@ export const demoRepository: PanelRepository = {
   async read() {
     const database = await db();
     const transaction = database.transaction("state", "readwrite");
-    const raw = await transaction.store.get("snapshot");
-    if (raw !== undefined) {
+    try {
+      const raw = await transaction.store.get("snapshot");
+      const state = raw === undefined ? createDemo() : migrateState(raw);
+      if (raw === undefined || (raw as { schema?: number }).schema !== 2)
+        await transaction.store.put(state, "snapshot");
       await transaction.done;
-      return stateSchema.parse(raw);
+      return state;
+    } catch (error) {
+      try {
+        transaction.abort();
+      } catch {
+        /* Already aborted. */
+      }
+      await transaction.done.catch(() => undefined);
+      throw error;
     }
-    const state = createDemo();
-    await transaction.store.put(state, "snapshot");
-    await transaction.done;
-    return state;
   },
   async execute(command) {
     const database = await db();
     const transaction = database.transaction("state", "readwrite");
     try {
-      const current = stateSchema.parse(
-        await transaction.store.get("snapshot"),
-      );
+      const current = migrateState(await transaction.store.get("snapshot"));
       const next = applyCommand(current, command);
       await transaction.store.put(next, "snapshot");
       await transaction.done;
@@ -77,9 +82,12 @@ export const demoRepository: PanelRepository = {
     const database = await db();
     const transaction = database.transaction("state", "readwrite");
     const previous = await transaction.store.get("snapshot");
-    const revision = stateSchema.safeParse(previous);
     const state = createDemo();
-    state.revision = revision.success ? revision.data.revision + 1 : 0;
+    try {
+      state.revision = migrateState(previous).revision + 1;
+    } catch {
+      state.revision = 0;
+    }
     await transaction.store.put(state, "snapshot");
     await transaction.done;
     return state;

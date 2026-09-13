@@ -27,6 +27,10 @@ O servidor será responsável por estabelecimento, sessão, perfil, preços, dis
 | `PATCH /staff/drivers/{id}/availability`  | Administrar novas coletas                      | Gestor                                                       |
 | `GET /catalog`                            | Cardápio e regras publicáveis                  | Conforme contexto do app                                     |
 | `PATCH /staff/products/{id}`              | Editar preço/disponibilidade                   | Gestor                                                       |
+| `GET /staff/promotions`                   | Listar promoções, vigência e consumo           | Atendimento/gestor                                           |
+| `POST /staff/promotions`                  | Criar desconto e limites                       | Gestor                                                       |
+| `PATCH /staff/promotions/{id}`            | Editar ou pausar com versão esperada           | Gestor                                                       |
+| `POST /orders/quote`                      | Cotar itens e promoção no servidor             | Cliente/atendimento conforme estabelecimento                 |
 | `PATCH /staff/store`                      | Abrir/pausar loja e preferências               | Gestor                                                       |
 
 Retirada pelo entregador, início da rota, entrega e tentativa/devolução passam pelos comandos autenticados do app de entregas (`/driver/deliveries/{id}/collect`, `/start`, `/complete`, `/issue`, `/return`) propostos no repositório do entregador. Os botões “Simular” deste painel não devem virar comandos irrestritos em produção.
@@ -62,6 +66,18 @@ Idempotency-Key: <identificador único da tentativa lógica>
 O servidor deve, em uma transação, validar a sessão e o estabelecimento, conferir perfil e versão, aplicar a transição, gravar o evento e retornar o pedido atualizado. Repetir a mesma chave não deve duplicar a ação. Versão desatualizada deve retornar conflito (`409`) com indicação do estado atual para reconciliação.
 
 Itens de criação carregam referências de produto/sabor, tamanho, borda e quantidade. O servidor consulta o catálogo e calcula totais em centavos; os itens do pedido preservam o preço e a descrição contratados. Mudanças no catálogo não reprecificam pedidos já aceitos.
+
+## Promoções e reservas no servidor
+
+A demo usa schema 2 e migra o schema 1 sem recalcular os pedidos antigos. `src/domain/promotions.ts` define desconto percentual/valor fixo, vigência, cota e snapshot do desconto; `quoteOrder` calcula o desconto por pizza, excluindo borda, bebidas e entrega. A proposta atual é selecionar uma única promoção por pedido, válida para todos os sabores/tamanhos. Confirmar essa política com a pizzaria antes da integração.
+
+Cada pedido guarda `discount` em centavos e um snapshot `promotion`: identidade, versão, nome, regra, horário de aplicação, quantidade e alocação por item. A versão local deriva o consumo dos pedidos: concluídos são vendidos; em andamento são reservados; cancelados/devolvidos não ocupam cota. Uma tentativa em retorno continua reservada até a devolução ser confirmada. Mudanças da campanha nunca recalculam snapshots históricos.
+
+Na API, consultar preços, conferir vigência com relógio do servidor, reservar a cota e criar o pedido na **mesma transação PostgreSQL**. Usar bloqueio/atualização condicional para impedir que pedidos do painel e dos Android consumam simultaneamente a última unidade. No cancelamento/devolução, liberar a reserva exatamente uma vez; na conclusão, convertê-la em venda sem liberar capacidade. Usar chaves de idempotência e restrições de integridade. Uma cotação não reserva estoque promocional por si só.
+
+O cliente envia referências de itens e promoção, nunca um desconto confiável. O servidor recalcula valores e compara com uma cotação versionada, devolvendo conflito se o valor ou a distribuição da cota tiver mudado, para revisão explícita. A `signature` local não é assinatura criptográfica, autenticação ou garantia de preço. Não transportá-la como prova de cobrança. Se houver carrinhos reservados ou pagamentos pendentes, definir duração e expiração da reserva no servidor; isso ainda não existe na demo.
+
+Publicar `promotion.updated` e `promotion.usage.changed` após confirmar as transações, restritos por estabelecimento. Somar também pedidos arquivados no consumo vitalício da campanha. Registrar histórico de edições e quem concedeu/alterou a oferta; somente gestores devem administrar promoções.
 
 ## Eventos e reconexão
 

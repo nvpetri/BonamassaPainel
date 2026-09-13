@@ -244,8 +244,19 @@ export function OrderDetail({
         <div className="detail-section">
           <div className="total-line">
             <span>Itens</span>
-            <b>{brl(order.total - order.fee)}</b>
+            <b>{brl(order.total + order.discount - order.fee)}</b>
           </div>
+          {order.promotion && (
+            <div className="total-line promotion-total">
+              <span>
+                {order.promotion.name}
+                <small className="promotion-detail-count">
+                  {order.promotion.pizzaQuantity} pizza(s) com desconto
+                </small>
+              </span>
+              <b>− {brl(order.discount)}</b>
+            </div>
+          )}
           <div className="total-line">
             <span>Taxa de entrega</span>
             <b>{brl(order.fee)}</b>
@@ -257,13 +268,15 @@ export function OrderDetail({
           <div className="payment-box">
             <strong>{paymentLabels[order.payment]}</strong>
             <span>
-              {order.paymentCollected
-                ? "Recebimento registrado na demonstração"
-                : isActive(order)
-                  ? `Cobrar ${brl(order.total)} ao entregar`
-                  : "Sem recebimento registrado"}
+              {order.total === 0
+                ? "Sem valor a cobrar"
+                : order.paymentCollected
+                  ? "Recebimento registrado na demonstração"
+                  : isActive(order)
+                    ? `Cobrar ${brl(order.total)} ao entregar`
+                    : "Sem recebimento registrado"}
             </span>
-            {order.payment === "CASH" && (
+            {order.payment === "CASH" && order.total > 0 && (
               <span>
                 Cliente informa {brl(order.cashTendered)} · Troco{" "}
                 <b>{brl(order.cashTendered - order.total)}</b>
@@ -383,7 +396,7 @@ export function OrderDetail({
                     placeholder="Nome de exemplo"
                   />
                 </Field>
-                {order.payment !== "PREPAID" && (
+                {order.payment !== "PREPAID" && order.total > 0 && (
                   <label className="check-field">
                     <input
                       required

@@ -6,15 +6,18 @@ import {
   brl,
   crusts,
   priceItems,
+  quoteOrder,
   sizeLabels,
   type Draft,
   type ItemDraft,
 } from "@/domain/model";
 import { usePanel } from "./panel-provider";
+import { promotionStatus, promotionUsage } from "@/domain/promotions";
+import { discountLabel } from "./promotions";
 import { Button, Field, Modal, MoneyInput, moneyText, parseMoney } from "./ui";
 
 export function NewOrder({ onClose }: { onClose(): void }) {
-  const { state, busy, execute, notify } = usePanel();
+  const { state, now, busy, execute, notify } = usePanel();
   const products = state!.products;
   const [kind, setKind] = useState<"PIZZA" | "DRINK">("PIZZA");
   const [flavor, setFlavor] = useState(
@@ -39,6 +42,7 @@ export function NewOrder({ onClose }: { onClose(): void }) {
   const [change, setChange] = useState(false);
   const [cash, setCash] = useState("");
   const [fee, setFee] = useState(moneyText(state!.settings.defaultFee));
+  const [promotionId, setPromotionId] = useState("");
   let lines: ReturnType<typeof priceItems> = [];
   let quoteError = "";
   try {
@@ -51,7 +55,30 @@ export function NewOrder({ onClose }: { onClose(): void }) {
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
-  const total = subtotal + (Number.isFinite(deliveryFee) ? deliveryFee : 0);
+  let quote: ReturnType<typeof quoteOrder> | null = null;
+  if (!quoteError) {
+    try {
+      quote = quoteOrder(
+        state!,
+        {
+          items,
+          mode,
+          fee: Number.isFinite(deliveryFee) ? deliveryFee : 0,
+          promotionId,
+        },
+        now,
+      );
+    } catch (error) {
+      quoteError =
+        error instanceof Error ? error.message : "Confira a promoção.";
+    }
+  }
+  const total =
+    quote?.total ?? subtotal + (Number.isFinite(deliveryFee) ? deliveryFee : 0);
+  const pizzaCount = items.reduce(
+    (sum, item) => sum + (item.kind === "PIZZA" ? item.quantity : 0),
+    0,
+  );
   const addItem = () => {
     const item: ItemDraft =
       kind === "PIZZA"
@@ -88,7 +115,7 @@ export function NewOrder({ onClose }: { onClose(): void }) {
       return;
     }
     const cashTendered =
-      payment === "CASH" ? (change ? parseMoney(cash) : total) : 0;
+      payment === "CASH" && total > 0 ? (change ? parseMoney(cash) : total) : 0;
     if (!Number.isFinite(cashTendered)) {
       notify("Informe o valor em dinheiro.", true);
       return;
@@ -97,6 +124,7 @@ export function NewOrder({ onClose }: { onClose(): void }) {
       await execute(
         {
           type: "CREATE",
+          expectedQuote: quote?.signature,
           draft: {
             customer,
             channel,
@@ -108,6 +136,7 @@ export function NewOrder({ onClose }: { onClose(): void }) {
             cashTendered,
             fee: deliveryFee,
             items,
+            promotionId: promotionId || null,
           },
         },
         "Pedido recebido! Ele já aparece na fila de novos.",
@@ -387,11 +416,65 @@ export function NewOrder({ onClose }: { onClose(): void }) {
                 </Button>
               </div>
             ))}
-            {quoteError && <p className="inline-error">{quoteError}</p>}
+            {state!.promotions.length > 0 && (
+              <div className="order-promotion">
+                <Field
+                  label="Promoção do pedido"
+                  hint="Uma promoção por pedido. Desconto só nas pizzas, sem borda, bebidas e entrega."
+                >
+                  <select
+                    value={promotionId}
+                    onChange={(e) => setPromotionId(e.target.value)}
+                  >
+                    <option value="">Sem promoção</option>
+                    {state!.promotions.map((p) => {
+                      const status = promotionStatus(p, state!.orders, now);
+                      const remaining = promotionUsage(
+                        p,
+                        state!.orders,
+                      ).remaining;
+                      return (
+                        <option
+                          key={p.id}
+                          value={p.id}
+                          disabled={status !== "Ativa"}
+                        >
+                          {p.name} · {discountLabel(p)}
+                          {status !== "Ativa"
+                            ? ` · ${status}`
+                            : remaining !== null
+                              ? ` · ${remaining} disponíveis`
+                              : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </Field>
+                {quote?.promotion && (
+                  <p className="promotion-applied">
+                    Desconto em {quote.promotion.pizzaQuantity} de {pizzaCount}{" "}
+                    pizza(s).
+                    {quote.promotion.pizzaQuantity < pizzaCount
+                      ? " As demais ficam no preço normal. O limite segue a ordem dos itens."
+                      : " Unidades reservadas ao criar o pedido."}
+                  </p>
+                )}
+              </div>
+            )}
+            {quoteError && (
+              <p role="alert" className="inline-error">
+                {quoteError}
+              </p>
+            )}
             <div className="summary-totals">
               <span>
                 Subtotal <b>{brl(subtotal)}</b>
               </span>
+              {!!quote?.discount && (
+                <span className="promotion-total">
+                  Desconto <b>− {brl(quote.discount)}</b>
+                </span>
+              )}
               {mode === "DELIVERY" && (
                 <Field label="Taxa de entrega">
                   <MoneyInput value={fee} onChange={setFee} required />
@@ -416,7 +499,12 @@ export function NewOrder({ onClose }: { onClose(): void }) {
                 Não gera PIX nem confirma uma transação real.
               </p>
             )}
-            {payment === "CASH" && (
+            {total === 0 && (
+              <p className="promotion-applied">
+                Sem valor a cobrar neste pedido.
+              </p>
+            )}
+            {payment === "CASH" && total > 0 && (
               <>
                 <label className="check-field">
                   <input

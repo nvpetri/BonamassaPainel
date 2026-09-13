@@ -28,6 +28,7 @@ import {
   Settings2,
   ShoppingBag,
   Store,
+  Tags,
   Truck,
   Volume2,
   VolumeX,
@@ -49,12 +50,14 @@ import { Badge, Button, Empty, Modal, OrderCard, StatusBadge } from "./ui";
 import { NewOrder } from "./new-order";
 import { CardAction, OrderDetail } from "./order-detail";
 import { Catalog, Deliveries, Settings } from "./management";
+import { Promotions } from "./promotions";
 
 const navigation = [
   { view: "pedidos", label: "Pedidos", icon: LayoutDashboard },
   { view: "cozinha", label: "Cozinha", icon: ChefHat },
   { view: "entregas", label: "Entregas", icon: Truck },
   { view: "cardapio", label: "Cardápio", icon: Pizza },
+  { view: "promocoes", label: "Promoções", icon: Tags },
   { view: "historico", label: "Histórico", icon: History },
   { view: "configuracoes", label: "Configurações", icon: Settings2 },
 ] as const;
@@ -714,6 +717,7 @@ export function Dashboard({ view }: { view: View }) {
           )}
           {view === "entregas" && <Deliveries onOpen={setSelectedId} />}
           {view === "cardapio" && <Catalog />}
+          {view === "promocoes" && <Promotions />}
           {view === "configuracoes" && <Settings />}
           {view === "historico" && (
             <>
@@ -780,7 +784,7 @@ export function Dashboard({ view }: { view: View }) {
               <span className="dot" /> Dados de exemplo · salvos neste navegador
             </span>
             <span>
-              Bonamassa Painel <b>v0.1</b>
+              Bonamassa Painel <b>v0.2</b>
             </span>
           </footer>
         </main>

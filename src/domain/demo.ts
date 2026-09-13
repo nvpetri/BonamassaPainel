@@ -8,12 +8,13 @@ import {
 
 export function createDemo(now = Date.now()): State {
   let state: State = {
-    schema: 1,
+    schema: 2,
     demoId: crypto.randomUUID(),
     revision: 0,
     nextNumber: 1039,
     storeOpen: true,
     settings: { targetMinutes: 45, defaultFee: 700 },
+    promotions: [],
     products: [
       {
         id: "mussarela",

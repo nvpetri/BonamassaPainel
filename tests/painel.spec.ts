@@ -209,7 +209,7 @@ test("dados inválidos não são substituídos silenciosamente", async ({
   ).toBeVisible();
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open("bonamassa-painel-demo", 1);
+      const request = indexedDB.open("bonamassa-painel-demo", 2);
       request.onsuccess = () => {
         const database = request.result;
         const tx = database.transaction("state", "readwrite");
@@ -253,6 +253,7 @@ test("telas desktop e celular sem transbordamento e sem violações WCAG A/AA de
     "cozinha",
     "entregas",
     "cardapio",
+    "promocoes",
     "historico",
     "configuracoes",
   ]) {
@@ -283,6 +284,7 @@ test("telas desktop e celular sem transbordamento e sem violações WCAG A/AA de
     "cozinha",
     "entregas",
     "cardapio",
+    "promocoes",
     "historico",
     "configuracoes",
   ]) {
