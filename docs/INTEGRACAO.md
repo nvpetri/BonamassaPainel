@@ -87,6 +87,10 @@ O snapshot da receita deve sobreviver a pausas, mudanças de preço/nome, altera
 
 Ao migrar o schema 2, preservar os dados anteriores, classificar sabores sem grupo como tradicionais e cadastrar as bordas existentes. O limite local passa a 200 produtos para permitir a migração inclusive de um catálogo anterior com 100 produtos. A API deve ter limites próprios definidos por estabelecimento.
 
+O cadastro explicita inteira/meio a meio e permite editar cada linha da receita. Essa escolha continua representada por um ou dois `flavorIds`, sem campo adicional no banco. `comboPriceComparison` calcula a referência atual dos itens avulsos (incluindo quantidades e bordas), a diferença em centavos e o percentual apresentado. Essa referência não altera `Product.prices` nem é um desconto adicional no pedido: o item `COMBO` já cobra o preço final cadastrado. A comparação ignora a pausa apenas para permitir consultar a receita no cadastro; a venda mantém todas as validações de disponibilidade.
+
+O preço salvo deve permanecer fixo até uma edição explícita, mesmo quando sabores, bordas ou bebidas mudarem de valor. Comparações de economia exibidas pela API devem usar preços avulsos atuais e identificar essa referência. Os snapshots dos pedidos permanecem inalterados. Este ajuste não exige nova migração: schema 3 / IndexedDB 4 continuam em uso.
+
 ## Promoções e reservas no servidor
 
 A demo usa schema 3 e migra os schemas 1 e 2 sem recalcular os pedidos antigos. `src/domain/promotions.ts` define desconto percentual/valor fixo, vigência, cota e snapshot do desconto; `quoteOrder` calcula o desconto por pizza, excluindo borda, bebidas, combos e entrega. A proposta atual é selecionar uma única promoção por pedido, válida para todos os sabores/tamanhos. Confirmar essa política com a pizzaria antes da integração.

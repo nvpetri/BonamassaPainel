@@ -235,6 +235,29 @@ export function recipeComponents(
   });
 }
 
+/** Current menu prices are only a comparison; they never replace a combo's saved price. */
+export function comboPriceComparison(
+  products: Product[],
+  items: BasicItemDraft[],
+  comboPrice: number,
+) {
+  const lines = items.map((item) => {
+    const priced = priceBasicItem(products, item, false);
+    return { ...priced, total: priced.unitPrice * item.quantity };
+  });
+  const individualTotal = lines.reduce((sum, line) => sum + line.total, 0);
+  const validPrice = moneySchema.positive().safeParse(comboPrice).success;
+  const difference =
+    validPrice && individualTotal > 0 ? individualTotal - comboPrice : null;
+  return {
+    lines,
+    individualTotal,
+    difference,
+    discountRate:
+      difference !== null && difference > 0 ? difference / individualTotal : 0,
+  };
+}
+
 export function productUnavailableReason(
   products: Product[],
   product: Product,

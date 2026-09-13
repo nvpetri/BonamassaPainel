@@ -4264,6 +4264,84 @@ body:has(dialog[open]) .toast {
 .builder-kind {
   flex-wrap: wrap;
 }
+.pizza-mode {
+  margin-top: 4px;
+}
+.pizza-mode > button {
+  flex-direction: column;
+  gap: 3px;
+}
+.pizza-mode small {
+  font-size: 10px;
+  font-weight: 400;
+}
+.cancel-item-edit {
+  margin-top: 10px;
+}
+.combo-editor-line .combo-pizza-format {
+  color: #ebc187;
+  margin: 3px 0;
+}
+.combo-pricing {
+  padding: 18px;
+  border: 1px solid #70502b;
+  border-radius: 9px;
+  background: #21190f;
+  margin: 20px 0 12px;
+}
+.combo-pricing h3 {
+  margin: 0 0 17px;
+}
+.combo-reference,
+.combo-savings {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 15px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.combo-reference {
+  color: #d2b894;
+  padding-bottom: 16px;
+}
+.combo-savings {
+  padding: 13px;
+  margin: 0 0 14px;
+  color: #dbc39f;
+  background: #ffffff05;
+  border-radius: 7px;
+}
+.combo-savings.discounted {
+  color: #d0e5c2;
+  background: #253421;
+}
+.combo-savings small {
+  font-size: 11px;
+  font-weight: 400;
+}
+.combo-pricing > .field-hint {
+  margin: 12px 0 0;
+}
+.combo-pricing > .button {
+  white-space: normal;
+}
+.combo-price-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 0 15px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.combo-price-summary span {
+  color: #c5ac89;
+}
+.combo-price-summary strong {
+  color: #bed9ae;
+  font-weight: 500;
+}
 .builder-price {
   display: flex;
   justify-content: space-between;

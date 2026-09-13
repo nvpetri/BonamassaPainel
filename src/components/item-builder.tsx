@@ -10,6 +10,7 @@ import {
   sizeLabels,
   type ItemDraft,
   type PizzaDraft,
+  type BasicItemDraft,
 } from "@/domain/catalog";
 import { Button, Field } from "./ui";
 import { ItemComponents } from "./order-components";
@@ -19,13 +20,16 @@ export function PizzaFields({
   value,
   onChange,
   halfRequired = false,
+  chooseMode = false,
 }: {
   products: Product[];
   value: Pick<PizzaDraft, "flavorIds" | "size" | "crust">;
   onChange(value: Pick<PizzaDraft, "flavorIds" | "size" | "crust">): void;
   halfRequired?: boolean;
+  chooseMode?: boolean;
 }) {
   const [first = "", second = ""] = value.flavorIds;
+  const half = halfRequired || value.flavorIds.length === 2;
   const options = (exclude?: string) =>
     Object.entries(pizzaGroupLabels).map(([group, label]) => (
       <optgroup label={label} key={group}>
@@ -46,6 +50,30 @@ export function PizzaFields({
     ));
   return (
     <>
+      {chooseMode && (
+        <div
+          className="segmented pizza-mode"
+          role="group"
+          aria-label="Formato da pizza"
+        >
+          <button
+            type="button"
+            aria-pressed={!half}
+            className={!half ? "selected" : ""}
+            onClick={() => onChange({ ...value, flavorIds: [first] })}
+          >
+            Pizza inteira <small>1 sabor</small>
+          </button>
+          <button
+            type="button"
+            aria-pressed={half}
+            className={half ? "selected" : ""}
+            onClick={() => onChange({ ...value, flavorIds: [first, second] })}
+          >
+            Meio a meio <small>2 sabores</small>
+          </button>
+        </div>
+      )}
       <div className="form-row">
         <Field label="Sabor principal">
           <select
@@ -54,9 +82,11 @@ export function PizzaFields({
               onChange({
                 ...value,
                 flavorIds:
-                  second && second !== e.target.value
-                    ? [e.target.value, second]
-                    : [e.target.value],
+                  (chooseMode && half) || halfRequired
+                    ? [e.target.value, second !== e.target.value ? second : ""]
+                    : second && second !== e.target.value
+                      ? [e.target.value, second]
+                      : [e.target.value],
               })
             }
           >
@@ -66,22 +96,29 @@ export function PizzaFields({
             {options()}
           </select>
         </Field>
-        <Field label="Segundo sabor">
-          <select
-            value={second}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                flavorIds: e.target.value ? [first, e.target.value] : [first],
-              })
-            }
-          >
-            <option value="" disabled={halfRequired}>
-              {halfRequired ? "Escolha a outra metade" : "Pizza inteira"}
-            </option>
-            {options(first)}
-          </select>
-        </Field>
+        {(!chooseMode || half) && (
+          <Field label="Segundo sabor">
+            <select
+              value={second}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  flavorIds:
+                    e.target.value || chooseMode || halfRequired
+                      ? [first, e.target.value]
+                      : [first],
+                })
+              }
+            >
+              <option value="" disabled={halfRequired || chooseMode}>
+                {halfRequired || chooseMode
+                  ? "Escolha a outra metade"
+                  : "Pizza inteira"}
+              </option>
+              {options(first)}
+            </select>
+          </Field>
+        )}
       </div>
       <div className="form-row">
         <Field label="Tamanho">
@@ -124,32 +161,52 @@ export function ItemBuilder({
   onAdd,
   allowCombos = false,
   disabled = false,
+  initialItem,
+  choosePizzaMode = false,
+  onCancel,
 }: {
   products: Product[];
   onAdd(item: ItemDraft): void;
   allowCombos?: boolean;
   disabled?: boolean;
+  initialItem?: BasicItemDraft;
+  choosePizzaMode?: boolean;
+  onCancel?(): void;
 }) {
-  const [kind, setKind] = useState<ItemDraft["kind"]>("PIZZA");
+  const [kind, setKind] = useState<ItemDraft["kind"]>(
+    initialItem?.kind ?? "PIZZA",
+  );
   const [pizza, setPizza] = useState<
     Pick<PizzaDraft, "flavorIds" | "size" | "crust">
-  >({
-    flavorIds: [
-      products.find((p) => p.category === "PIZZA" && p.enabled)?.id ?? "",
-    ],
-    size: "LARGE",
-    crust: "NONE",
-  });
+  >(
+    initialItem?.kind === "PIZZA"
+      ? {
+          flavorIds: initialItem.flavorIds,
+          size: initialItem.size,
+          crust: initialItem.crust,
+        }
+      : {
+          flavorIds: [
+            products.find((p) => p.category === "PIZZA" && p.enabled)?.id ?? "",
+          ],
+          size: "LARGE",
+          crust: "NONE",
+        },
+  );
   const [drink, setDrink] = useState(
-    products.find((p) => p.category === "DRINK" && p.enabled)?.id ?? "",
+    initialItem?.kind === "DRINK"
+      ? initialItem.productId
+      : (products.find((p) => p.category === "DRINK" && p.enabled)?.id ?? ""),
   );
   const [combo, setCombo] = useState(
     products.find(
       (p) => p.category === "COMBO" && !productUnavailableReason(products, p),
     )?.id ?? "",
   );
-  const [quantity, setQuantity] = useState(1);
-  const [note, setNote] = useState("");
+  const [quantity, setQuantity] = useState(initialItem?.quantity ?? 1);
+  const [note, setNote] = useState(
+    initialItem?.kind === "PIZZA" ? initialItem.note : "",
+  );
   const item: ItemDraft =
     kind === "PIZZA"
       ? { kind, ...pizza, quantity, note }
@@ -195,7 +252,12 @@ export function ItemBuilder({
         ))}
       </div>
       {kind === "PIZZA" ? (
-        <PizzaFields products={products} value={pizza} onChange={setPizza} />
+        <PizzaFields
+          products={products}
+          value={pizza}
+          onChange={setPizza}
+          chooseMode={choosePizzaMode}
+        />
       ) : (
         <Field label={kind === "DRINK" ? "Bebida" : "Combo"}>
           <select
@@ -269,9 +331,14 @@ export function ItemBuilder({
             setNote("");
           }}
         >
-          <Plus size={16} /> Adicionar item
+          <Plus size={16} /> {initialItem ? "Atualizar item" : "Adicionar item"}
         </Button>
       </div>
+      {onCancel && (
+        <Button className="full cancel-item-edit" onClick={onCancel}>
+          Cancelar edição do item
+        </Button>
+      )}
       {price ? (
         <p className="builder-price">
           Total do item <strong>{brl(price.unitPrice * price.quantity)}</strong>

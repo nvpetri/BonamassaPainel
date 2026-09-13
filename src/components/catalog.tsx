@@ -20,6 +20,7 @@ import {
   productUnavailableReason,
   priceItems,
   recipeComponents,
+  comboPriceComparison,
   type BasicItemDraft,
   type PizzaDraft,
 } from "@/domain/catalog";
@@ -38,6 +39,7 @@ import { PhotoField, ProductPhoto } from "./product-photo";
 import { ItemBuilder, PizzaFields } from "./item-builder";
 import { ItemComponents } from "./order-components";
 import { NewOrder } from "./new-order";
+import { ComboPriceEditor, ComboPriceSummary } from "./combo-price";
 
 const icons = { PIZZA: Pizza, CRUST: Circle, DRINK: Wine, COMBO: Package };
 const createLabels = {
@@ -271,6 +273,15 @@ export function Catalog() {
                         </div>
                       ))}
                     </div>
+                    {product.combo && (
+                      <ComboPriceSummary
+                        comparison={comboPriceComparison(
+                          products,
+                          product.combo,
+                          product.prices.MEDIUM,
+                        )}
+                      />
+                    )}
                     <div className="product-actions">
                       <Button
                         tone="ghost"
@@ -446,15 +457,20 @@ function EditProduct({
   const [photoPending, setPhotoPending] = useState(false);
   const [enabled, setEnabled] = useState(product?.enabled ?? true);
   const [combo, setCombo] = useState<BasicItemDraft[]>(product?.combo ?? []);
+  const [editingItem, setEditingItem] = useState<number | null>(null);
   const [prices, setPrices] = useState({
     SMALL: product ? moneyText(product.prices.SMALL) : "",
     MEDIUM: product ? moneyText(product.prices.MEDIUM) : "",
     LARGE: product ? moneyText(product.prices.LARGE) : "",
   });
-  const parts = recipeComponents(state!.products, combo);
+  const parts = comboPriceComparison(
+    state!.products,
+    combo,
+    parseMoney(prices.MEDIUM),
+  ).lines;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy || photoPending) return;
+    if (busy || photoPending || editingItem !== null) return;
     if (!name.trim()) {
       notify("Informe o nome do produto.", true);
       return;
@@ -509,9 +525,10 @@ function EditProduct({
               <select
                 value={category}
                 disabled={!!product}
-                onChange={(e) =>
-                  setCategory(e.target.value as Product["category"])
-                }
+                onChange={(e) => {
+                  setCategory(e.target.value as Product["category"]);
+                  setEditingItem(null);
+                }}
               >
                 {Object.entries(categoryLabels).map(([id, label]) => (
                   <option value={id} key={id}>
@@ -561,42 +578,44 @@ function EditProduct({
               onChange={(e) => setDescription(e.target.value)}
             />
           </Field>
-          <div className="form-row">
-            {(category === "PIZZA"
-              ? (["SMALL", "MEDIUM", "LARGE"] as const)
-              : (["MEDIUM"] as const)
-            ).map((size) => (
-              <Field
-                key={size}
-                label={
-                  category === "PIZZA"
-                    ? { SMALL: "Pequena", MEDIUM: "Média", LARGE: "Grande" }[
-                        size
-                      ]
-                    : category === "CRUST"
-                      ? "Preço da borda por pizza"
-                      : category === "COMBO"
-                        ? "Preço do combo"
+          {category !== "COMBO" && (
+            <div className="form-row">
+              {(category === "PIZZA"
+                ? (["SMALL", "MEDIUM", "LARGE"] as const)
+                : (["MEDIUM"] as const)
+              ).map((size) => (
+                <Field
+                  key={size}
+                  label={
+                    category === "PIZZA"
+                      ? { SMALL: "Pequena", MEDIUM: "Média", LARGE: "Grande" }[
+                          size
+                        ]
+                      : category === "CRUST"
+                        ? "Preço da borda por pizza"
                         : "Preço por unidade"
-                }
-              >
-                <MoneyInput
-                  value={prices[size]}
-                  onChange={(value) => setPrices({ ...prices, [size]: value })}
-                  required
-                />
-              </Field>
-            ))}
-          </div>
+                  }
+                >
+                  <MoneyInput
+                    value={prices[size]}
+                    onChange={(value) =>
+                      setPrices({ ...prices, [size]: value })
+                    }
+                    required
+                  />
+                </Field>
+              ))}
+            </div>
+          )}
           {category === "COMBO" && (
             <section className="combo-editor">
               <h3>
                 Composição do combo <span>{combo.length}/6</span>
               </h3>
               <p className="field-hint">
-                Adicione de 2 a 6 itens. Defina os sabores e tamanhos de cada
-                pizza, com a borda incluída no preço do combo. O combo fica
-                indisponível se algum componente for pausado.
+                Adicione de 2 a 6 itens. Escolha pizza inteira ou meio a meio,
+                tamanho e borda. O combo fica indisponível se algum componente
+                for pausado.
               </p>
               {parts.map((part, index) => (
                 <div className="combo-editor-line" key={index}>
@@ -604,26 +623,75 @@ function EditProduct({
                     <strong>
                       {part.quantity}× {part.name}
                     </strong>
+                    {combo[index].kind === "PIZZA" && (
+                      <small className="combo-pizza-format">
+                        {combo[index].flavorIds.length === 2
+                          ? "Meio a meio"
+                          : "Pizza inteira"}
+                      </small>
+                    )}
                     <small>{part.detail}</small>
                     {part.note && <small>{part.note}</small>}
+                    <small>Preço individual: {brl(part.total)}</small>
                   </div>
                   <Button
                     tone="ghost"
+                    disabled={busy || editingItem !== null}
+                    aria-label={`Editar item ${index + 1} do combo`}
+                    onClick={() => setEditingItem(index)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    tone="ghost"
+                    disabled={busy || editingItem !== null}
                     aria-label={`Remover item ${index + 1} do combo`}
-                    onClick={() =>
-                      setCombo(combo.filter((_, i) => i !== index))
-                    }
+                    onClick={() => {
+                      setCombo(combo.filter((_, i) => i !== index));
+                      setEditingItem(null);
+                    }}
                   >
                     <Trash2 size={16} />
                   </Button>
                 </div>
               ))}
               <ItemBuilder
+                key={
+                  editingItem === null ? "new-item" : `edit-item-${editingItem}`
+                }
+                initialItem={
+                  editingItem === null ? undefined : combo[editingItem]
+                }
+                choosePizzaMode
                 products={state!.products}
-                disabled={busy || combo.length >= 6}
+                disabled={busy || (editingItem === null && combo.length >= 6)}
+                onCancel={
+                  editingItem === null ? undefined : () => setEditingItem(null)
+                }
                 onAdd={(item) => {
-                  if (item.kind !== "COMBO") setCombo([...combo, item]);
+                  if (item.kind === "COMBO") return;
+                  if (editingItem === null) setCombo([...combo, item]);
+                  else {
+                    setCombo(
+                      combo.map((current, i) =>
+                        i === editingItem ? item : current,
+                      ),
+                    );
+                    setEditingItem(null);
+                  }
                 }}
+              />
+              {editingItem !== null && (
+                <p className="field-hint" role="status">
+                  Atualize ou cancele a edição do item antes de salvar o combo.
+                </p>
+              )}
+              <ComboPriceEditor
+                products={state!.products}
+                items={combo}
+                value={prices.MEDIUM}
+                onChange={(value) => setPrices({ ...prices, MEDIUM: value })}
+                disabled={busy || editingItem !== null}
               />
               <p className="field-hint">
                 Preço fechado. A composição fica registrada no pedido, sem
@@ -653,7 +721,11 @@ function EditProduct({
         </div>
         <footer className="modal-footer">
           <Button onClick={onClose}>Voltar</Button>
-          <Button tone="primary" type="submit" disabled={busy || photoPending}>
+          <Button
+            tone="primary"
+            type="submit"
+            disabled={busy || photoPending || editingItem !== null}
+          >
             <Save size={16} />
             {photoPending
               ? "Preparando foto…"

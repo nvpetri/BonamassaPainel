@@ -1,4 +1,4 @@
-# Verificação do painel — categorias e botões
+# Verificação do painel — formato e desconto dos combos
 
 Validação executada em 13/09/2026, em Linux com Node.js 24.19.0.
 
@@ -9,8 +9,8 @@ Validação executada em 13/09/2026, em Linux com Node.js 24.19.0.
 | Compilação Next.js para produção | Aprovada; sete telas e página de entrada geradas                                                                                                                                                |
 | TypeScript                       | Sem erros                                                                                                                                                                                       |
 | ESLint                           | Sem erros ou avisos                                                                                                                                                                             |
-| Vitest                           | 59 testes de regras aprovados                                                                                                                                                                   |
-| Playwright / Chromium            | 19 cenários verificados: 16 passaram na primeira execução e os três ajustados passaram na repetição                                                                                             |
+| Vitest                           | 63 testes de regras aprovados                                                                                                                                                                   |
+| Playwright / Chromium            | 21 cenários aprovados na execução completa                                                                                                                                                      |
 | Axe / WCAG A e AA                | Nenhuma violação detectada nos sete caminhos em desktop e no formulário de novo pedido em viewport mobile; promoções, sabores com foto e categorias, meio a meio e cadastro de combo em celular |
 | Responsividade                   | Sem transbordamento horizontal da página nos sete caminhos a 1440×1000 e 390×844; a tabela tem rolagem própria                                                                                  |
 
@@ -39,7 +39,12 @@ Validação executada em 13/09/2026, em Linux com Node.js 24.19.0.
 18. Cadastro de combo exige composição. Pedido de dois combos por R$ 80 mais R$ 7 de entrega soma R$ 167. Cozinha e detalhe exibem duas pizzas, quatro refrigerantes, borda e observações. Pausar a borda em outra aba bloqueia novas vendas do combo e preserva o pedido existente.
 19. Categorias, prévia meio a meio e cadastro de combo em 390×844 sem transbordamento horizontal ou violações Axe A/AA detectadas.
 
-A conferência visual verificou o aceite verde e o cancelamento vermelho logo abaixo, com mesma largura e espaçamento nos cartões em desktop/mobile e no detalhe do pedido. O cancelamento continua exigindo motivo e confirmação. Os três cenários repetidos cobriram o estado de processamento da foto e a espera pela confirmação da gravação antes de recarregar/navegar. Não foram instaladas dependências novas.
+20. Combo alterna de inteira para meio a meio e volta a inteira pela edição da linha. Escolher o primeiro sabor igual ao segundo mantém meio a meio e exige outra metade. A edição incompleta bloqueia o salvamento, e o resumo usa maior sabor, tamanho, borda e quantidades. Após salvar, dois combos de R$ 135 + entrega de R$ 7 somam R$ 277. Alterar depois a composição e o preço para R$ 140 preserva o pedido anterior e atualiza somente novos pedidos.
+21. Preço zero é recusado; valor acima da soma não aparece como desconto. O botão para usar o preço avulso gera economia zero; cancelar a edição da linha e fechar o formulário não alteram o cadastro salvo. Formulário e formato da pizza foram auditados em 390×844 sem violações Axe A/AA detectadas.
+
+Quatro testes de regras específicos verificam a comparação de preços com tamanho, quantidades, maior metade e bordas; economia nula/negativa; valores inválidos; atualização da referência sem reprecificar o combo; e consulta de componentes pausados sem liberar a venda. O cálculo usa centavos; o percentual mostrado é arredondado para até duas casas.
+
+A conferência visual verificou o aceite verde e o cancelamento vermelho logo abaixo, com mesma largura e espaçamento nos cartões em desktop/mobile e no detalhe do pedido. O cancelamento continua exigindo motivo e confirmação. A execução completa atual também cobriu o estado de processamento da foto e a confirmação da gravação antes de recarregar/navegar. Não foram instaladas dependências novas.
 
 Os nove testes de domínio de categorias cobrem grupos, borda cadastrável/pausada, preço fixo e snapshots dos combos, disponibilidade dos componentes, referências inválidas e ciclos, alteração concorrente da receita, exclusão de combos das promoções, migração de fotos/preços/pedidos e catálogo anterior com 100 produtos.
 
