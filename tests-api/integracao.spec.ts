@@ -81,6 +81,14 @@ async function manual(
   ).toBeVisible();
 }
 
+test.afterEach(async ({ page }, info) => {
+  if (info.status !== info.expectedStatus)
+    console.log(
+      "Estado da interface no teste:",
+      (await page.locator("body").innerText()).slice(-14000),
+    );
+});
+
 test("gerente → pedido real → cozinha → entregador → histórico, com cotas, catálogo e recuperação", async ({
   page,
   browser,
@@ -91,7 +99,7 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
   page.on("pageerror", (error) => browserErrors.push(error.message));
   await login(page);
   await expect(
-    page.getByRole("heading", { name: "Tudo em dia por aqui" }),
+    page.getByText("Tudo em dia por aqui", { exact: true }),
   ).toBeVisible();
   const cookies = await page.context().cookies();
   expect(cookies.find((c) => c.name === "bonamassa_panel")?.httpOnly).toBe(
@@ -146,13 +154,11 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
       ctx.fillRect(0, 0, 100, 100);
       return c.toDataURL("image/png").split(",")[1];
     });
-    await form
-      .getByLabel("Selecionar foto", { exact: true })
-      .setInputFiles({
-        name: "pizza.png",
-        mimeType: "image/png",
-        buffer: Buffer.from(encoded, "base64"),
-      });
+    await form.getByLabel("Selecionar foto", { exact: true }).setInputFiles({
+      name: "pizza.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(encoded, "base64"),
+    });
     await expect(
       form.getByRole("button", { name: "Cadastrar sabor" }),
     ).toBeEnabled();

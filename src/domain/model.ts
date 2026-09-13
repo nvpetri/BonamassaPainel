@@ -72,6 +72,7 @@ export const orderSchema = z
     number: z.number().int().positive(),
     version: z.number().int().nonnegative(),
     customer: text(80),
+    customerPhone: z.string().max(20).optional(),
     channel: z.enum(["APP", "WHATSAPP", "COUNTER"]),
     mode: z.enum(["DELIVERY", "PICKUP"]),
     address: z.string().max(240),

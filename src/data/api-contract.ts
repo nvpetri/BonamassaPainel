@@ -167,6 +167,7 @@ export function mapOrder(o: ApiOrder): Order {
   return {
     ...o,
     customer: o.customer.name,
+    customerPhone: o.customer.phone,
     address: address
       ? `${address.street}, ${address.number} · ${address.neighborhood} · ${address.city}/${address.state} · CEP ${address.postalCode}`
       : "",
@@ -177,7 +178,7 @@ export function mapOrder(o: ApiOrder): Order {
     events: o.events.map((e) => ({
       id: `${o.id}:${e.version}`,
       at: e.createdAt,
-      label: `${labels[e.action] || e.action}${typeof e.data?.reason === "string" ? ` · ${e.data.reason}` : ""}`,
+      label: `${labels[e.action.replaceAll("-", "_").toUpperCase()] || e.action}${typeof e.data?.reason === "string" ? ` · ${e.data.reason}` : ""}`,
     })),
   };
 }

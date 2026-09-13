@@ -218,6 +218,7 @@ export function OrderDetail({
             <UserRound size={16} /> Cliente
           </h3>
           <strong>{order.customer}</strong>
+          {order.customerPhone && <p>{order.customerPhone}</p>}
           {order.mode === "DELIVERY" && (
             <>
               <p>{order.address}</p>
