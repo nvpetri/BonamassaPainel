@@ -112,11 +112,20 @@ test("cancelamento e devolução permanecem separados de vendas concluídas", as
   page,
 }) => {
   await page.goto("/pedidos");
-  await page.getByRole("button", { name: "Ver pedido 1043" }).click();
-  const detail = page.getByRole("dialog");
-  await detail
+  await page
+    .getByTestId("order-1043")
     .getByRole("button", { name: "Cancelar pedido", exact: true })
     .click();
+  const detail = page.getByRole("dialog");
+  await expect(
+    detail.getByRole("heading", { name: "Cancelar este pedido?" }),
+  ).toBeVisible();
+  await detail.getByRole("button", { name: "Confirmar", exact: true }).click();
+  expect(
+    await detail
+      .getByLabel("Motivo", { exact: true })
+      .evaluate((el: HTMLTextAreaElement) => el.validity.valueMissing),
+  ).toBe(true);
   await detail
     .getByLabel("Motivo", { exact: true })
     .fill("Cliente desistiu · exemplo");
@@ -163,6 +172,7 @@ test("cardápio e pausa da loja persistem; erro de troco aparece dentro da janel
   const modal = page.getByRole("dialog");
   await modal.getByLabel("Grande", { exact: true }).fill("60,50");
   await modal.getByRole("button", { name: "Salvar produto" }).click();
+  await expect(modal).toHaveCount(0);
   await page.reload();
   await expect(
     page.locator(".product-card").filter({
@@ -209,7 +219,7 @@ test("dados inválidos não são substituídos silenciosamente", async ({
   ).toBeVisible();
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open("bonamassa-painel-demo", 3);
+      const request = indexedDB.open("bonamassa-painel-demo", 4);
       request.onsuccess = () => {
         const database = request.result;
         const tx = database.transaction("state", "readwrite");

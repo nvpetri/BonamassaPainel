@@ -33,7 +33,7 @@ describe("Cadastro de sabores e fotos", () => {
     expect(state.products[0]).toEqual(flavor());
     expect(state.orders).toEqual(before.orders);
     expect(state.promotions).toEqual(before.promotions);
-    expect(before.products).toHaveLength(8);
+    expect(before.products).toHaveLength(11);
     const draft = {
       ...sampleDraft(state),
       items: [
@@ -107,16 +107,16 @@ describe("Cadastro de sabores e fotos", () => {
       expect(() =>
         applyCommand(state, { type: "ADD_PRODUCT", product }, now),
       ).toThrow();
-    expect(state.products).toHaveLength(8);
+    expect(state.products).toHaveLength(11);
   });
   it("respeita o limite de produtos sem impedir edição dos existentes", () => {
     const state = createDemo(now);
-    state.products = Array.from({ length: 100 }, (_, i) =>
+    state.products = Array.from({ length: 200 }, (_, i) =>
       flavor({ id: `sabor-${i}`, name: `Sabor ${i}`, photo: null }),
     );
     expect(() =>
       applyCommand(state, { type: "ADD_PRODUCT", product: flavor() }, now),
-    ).toThrow(/100 produtos/);
+    ).toThrow(/200 produtos/);
     expect(
       applyCommand(
         state,
@@ -162,7 +162,7 @@ describe("Cadastro de sabores e fotos", () => {
     expect(removed.products[0].photo).toBeNull();
     expect(removed.orders).toEqual(state.orders);
   });
-  it("abre o schema 2 anterior sem migração destrutiva e preserva fotos no JSON", () => {
+  it("abre o schema atual sem migração destrutiva e preserva fotos no JSON", () => {
     const before = createDemo(now);
     expect(before.products[0]).not.toHaveProperty("photo");
     expect(migrateState(before)).toEqual(before);

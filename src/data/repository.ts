@@ -19,8 +19,8 @@ export interface PanelRepository {
 let database: Promise<IDBPDatabase<DemoDatabase>> | undefined;
 function db() {
   if (!database) {
-    // Older tabs discard unknown product fields. A new DB version prevents them from erasing photos.
-    database = openDB<DemoDatabase>("bonamassa-painel-demo", 3, {
+    // Prevent older tabs from discarding categories, editable crusts and combo snapshots.
+    database = openDB<DemoDatabase>("bonamassa-painel-demo", 4, {
       upgrade(database, oldVersion) {
         if (oldVersion < 1) database.createObjectStore("state");
       },
@@ -46,7 +46,7 @@ export const demoRepository: PanelRepository = {
     try {
       const raw = await transaction.store.get("snapshot");
       const state = raw === undefined ? createDemo() : migrateState(raw);
-      if (raw === undefined || (raw as { schema?: number }).schema !== 2)
+      if (raw === undefined || (raw as { schema?: number }).schema !== 3)
         await transaction.store.put(state, "snapshot");
       await transaction.done;
       return state;

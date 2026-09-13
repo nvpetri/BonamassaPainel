@@ -2,7 +2,7 @@
 
 Painel web da pizzaria, com **recebimento de pedidos, cozinha (KDS) e expedição**. Interface em português, com a identidade preta, vermelha e dourada dos aplicativos Bonamassa.
 
-**Versão 0.3.0-demo:** funcional com cadastro de sabores, fotos no cardápio e promoções por prazo ou quantidade de pizzas, usando dados locais de demonstração. Ainda não há API central, autenticação ou conexão com os aplicativos Android. Nenhum pedido, pagamento ou mensagem real é enviado.
+**Versão 0.3.0-demo:** funcional com categorias, sabores, bordas, bebidas, combos, fotos no cardápio e promoções por prazo ou quantidade de pizzas, usando dados locais de demonstração. Ainda não há API central, autenticação ou conexão com os aplicativos Android. Nenhum pedido, pagamento ou mensagem real é enviado.
 
 ![Painel de pedidos](docs/pedidos.png)
 
@@ -47,7 +47,7 @@ O terminal precisa continuar aberto enquanto o servidor estiver sendo usado. Enc
 | `/pedidos`       | Colunas/lista, busca, filtros, novo pedido, aceite, andamento, detalhes e pausa de novos pedidos                  |
 | `/cozinha`       | A preparar, em preparo e prontos; observações, tempo de espera e tela cheia                                       |
 | `/entregas`      | Disponibilidade, atribuição e troca de motoboy antes da coleta; simulação de retirada, saída, entrega e devolução |
-| `/cardapio`      | Cadastro de novos sabores, fotos, busca, disponibilidade, descrição e preços por tamanho                          |
+| `/cardapio`      | Categorias, tradicionais/especiais, meio a meio, bordas, bebidas, combos, fotos e preços                          |
 | `/promocoes`     | Desconto percentual ou em reais por pizza, agendamento, prazo, limite de unidades, pausa e acompanhamento         |
 | `/historico`     | Concluídos, cancelados e devolvidos; busca, eventos e exportação CSV                                              |
 | `/configuracoes` | Meta de tempo, taxa padrão, exportação JSON e reinício confirmado da demo                                         |
@@ -58,15 +58,30 @@ Pagamentos são **registros simulados**: antecipado, dinheiro com troco ou cart�
 
 ## Novos sabores e fotos
 
-Em **Cardápio → Novo sabor**, preencha nome, descrição e preços para pequena, média e grande. Você pode cadastrar o sabor disponível ou pausado. Depois de salvar, ele aparece no cardápio; quando disponível, também pode ser escolhido nos novos pedidos, inclusive meia a meia e com promoções.
+Em **Cardápio → Pizzas → Novo sabor**, escolha o grupo **Tradicionais** ou **Especiais** e preencha nome, descrição e preços para pequena, média e grande. Você pode cadastrar o sabor disponível ou pausado. Depois de salvar, ele aparece no cardápio; quando disponível, também pode ser escolhido nos novos pedidos, inclusive meia a meia e com promoções.
 
 Use **Selecionar foto** no cadastro, ou **Editar → Selecionar foto** em um produto existente. A prévia aparece antes de salvar. Para substituir ou apagar, use **Trocar foto** ou **Remover foto** e confirme em **Salvar produto**. Cancelar a janela mantém o cadastro anterior. A foto é opcional, e os produtos sem imagem continuam com a ilustração padrão.
 
 - Arquivos aceitos: **JPG, PNG ou WebP, até 10 MB e 48 megapixels**. Arquivos inválidos mostram uma mensagem sem apagar a foto anterior.
 - O navegador decodifica e otimiza a imagem: até **1.200 pixels no maior lado** e **200 KB** por foto salva, em WebP ou JPEG. A imagem original não é armazenada. Os cartões usam enquadramento central.
-- Nome e preços válidos são obrigatórios. Nomes duplicados na mesma categoria são recusados, mesmo com diferenças de acento, espaços ou maiúsculas. Há um limite de 100 produtos na demo.
+- Nome e preços válidos são obrigatórios. Nomes duplicados na mesma categoria são recusados, mesmo com diferenças de acento, espaços ou maiúsculas. Há um limite de 200 produtos na demo.
 - Fotos e novos sabores ficam no IndexedDB do mesmo navegador/origem, junto dos demais dados, e permanecem após recarregar. O JSON de exportação inclui as fotos otimizadas. Elas ainda não são enviadas aos aplicativos Android.
-- O snapshot permanece no schema 2, com foto opcional por produto. O IndexedDB passa à versão 3 para impedir que abas com código antigo descartem esse campo ao salvar. Os dados anteriores são preservados; **recarregue as abas do painel após atualizar o servidor**.
+- O snapshot usa schema 3, com categorias, foto opcional e composição dos combos. O IndexedDB passa à versão 4 para impedir que abas com código antigo descartem esses dados ao salvar. Os dados anteriores são preservados; **recarregue as abas do painel após atualizar o servidor**.
+
+## Categorias e combos
+
+O cardápio tem as categorias **Pizzas, Bordas, Bebidas e Combos**, com busca, foto, edição de preço e pausa por produto. Em Pizzas, os filtros **Tradicionais** e **Especiais** organizam os sabores. O grupo pode ser alterado na edição sem duplicar o cadastro.
+
+- **Meio a meio:** selecione dois sabores diferentes, tamanho e borda na aba de mesmo nome. A prévia mostra o maior preço entre os sabores mais uma borda por pizza. **Montar pedido com esta pizza** abre um pedido com a combinação no resumo. Esta é uma forma de montar a pizza; os sabores continuam nos seus grupos.
+- **Bordas:** use **Nova borda** para informar nome, foto e preço adicional por pizza. O preço é único para os três tamanhos. A opção sem borda recheada continua gratuita. Pausar uma borda impede novas seleções; pedidos existentes mantêm o valor contratado.
+- **Bebidas:** use **Nova bebida**, com apresentação/volume no nome e preço por unidade.
+- **Combos:** use **Novo combo**, defina o preço fechado e adicione de 2 a 6 linhas à composição. Cada pizza tem sabores (inclusive meio a meio), tamanho, borda e observação definidos no cadastro; as bebidas têm apresentação e quantidade definidas. A quantidade de cada linha e a quantidade de combos no pedido vão de 1 a 20. Não há combo dentro de outro combo.
+
+Os combos aparecem no **Novo pedido → Combo**. O preço é o cadastrado para o conjunto; a borda e as bebidas da composição já estão incluídas. A cozinha, a comanda e o resumo mostram os componentes com as quantidades multiplicadas pela quantidade de combos. Pausar um sabor, borda ou bebida da receita bloqueia novas vendas do combo; reativar restaura sua disponibilidade, desde que o próprio combo esteja ativo. Alterar a receita ou os preços não muda pedidos existentes.
+
+Combos não acumulam descontos de pizzas avulsas. Num pedido com combo e pizza avulsa, somente a pizza avulsa é elegível para a promoção. As categorias e receitas são locais ao painel nesta demo; a sincronização com os apps depende da API central.
+
+Nos cartões de novos pedidos, **Aceitar pedido** aparece em verde e **Cancelar pedido** em vermelho, logo abaixo. Cancelar abre a confirmação com motivo obrigatório. Os mesmos botões aparecem no detalhe do pedido.
 
 ## Promoções
 
@@ -74,7 +89,7 @@ Em **Promoções → Nova promoção**, informe um nome, escolha desconto em **%
 
 Exemplos: 15% até domingo às 23h; R$ 10 nas primeiras 50 pizzas; 20% nas primeiras 30 pizzas até o fim da noite. Se houver dois limites, a promoção deixa de aceitar novos usos no primeiro atingido.
 
-No **Novo pedido**, adicione os itens e selecione a **Promoção do pedido** no resumo. O sistema não escolhe uma oferta automaticamente e não acumula promoções. O resumo mostra o desconto, o total e quantas pizzas foram contempladas. Borda recheada, bebidas e taxa de entrega mantêm o preço normal.
+No **Novo pedido**, adicione os itens e selecione a **Promoção do pedido** no resumo. O sistema não escolhe uma oferta automaticamente e não acumula promoções. O resumo mostra o desconto, o total e quantas pizzas foram contempladas. Borda recheada, bebidas, combos e taxa de entrega mantêm o preço normal.
 
 - O desconto considera todos os sabores e tamanhos. Meia a meia conta uma pizza e usa o preço do sabor mais caro. Percentuais são arredondados em centavos por unidade; desconto fixo não ultrapassa o preço da pizza.
 - A quantidade é de pizzas com desconto, não de pedidos ou fatias. Se restam duas unidades e o pedido contém três pizzas, as primeiras duas na ordem dos itens recebem a oferta; a terceira mantém o preço normal.
@@ -85,7 +100,7 @@ No **Novo pedido**, adicione os itens e selecione a **Promoção do pedido** no 
 
 ![Tela de promoções](docs/promocoes.png)
 
-Ao atualizar da versão 0.1, os dados são migrados automaticamente para o schema 2, preservando pedidos, preços, eventos e preferências. Recarregue as abas abertas depois de atualizar o servidor. Não é necessário reiniciar a demonstração.
+Ao atualizar dos schemas 1 ou 2, os dados são migrados automaticamente para o schema 3, preservando pedidos, fotos, preços, eventos, promoções e preferências. Os sabores antigos entram em Tradicionais e as duas bordas antes fixas passam a ser produtos editáveis. Recarregue as abas abertas depois de atualizar o servidor. Não é necessário reiniciar a demonstração.
 
 ## Roteiro para mostrar ao dono
 

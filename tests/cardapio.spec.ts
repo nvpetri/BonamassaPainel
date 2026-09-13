@@ -96,7 +96,7 @@ test("novo sabor com foto otimizada persiste e entra no cálculo de pedidos", as
   const oldVersion = await page.evaluate(
     () =>
       new Promise<string>((resolve) => {
-        const request = indexedDB.open("bonamassa-painel-demo", 2);
+        const request = indexedDB.open("bonamassa-painel-demo", 3);
         request.onerror = () => resolve(request.error!.name);
         request.onsuccess = () => {
           request.result.close();

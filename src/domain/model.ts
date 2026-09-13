@@ -1,5 +1,27 @@
 import { z } from "zod";
-import { catalogName, productPhotoSchema } from "./photos";
+import { catalogName } from "./photos";
+import {
+  CATALOG_LIMIT,
+  DomainError,
+  comboComponents,
+  defaultCrustProducts,
+  moneySchema,
+  productSchema,
+  itemSchema,
+  itemDraftSchema,
+  priceItems,
+  resolveCrust,
+} from "./catalog";
+export {
+  moneySchema,
+  productSchema,
+  itemSchema,
+  sizeSchema,
+  crustSchema,
+  sizeLabels,
+  priceItems,
+  DomainError,
+} from "./catalog";
 import {
   discountPerPizza,
   promotionSchema,
@@ -10,7 +32,6 @@ import {
   type PromotionSnapshot,
 } from "./promotions";
 
-export const moneySchema = z.number().int().min(0).max(10_000_000);
 const text = (max: number) => z.string().trim().min(1).max(max);
 export const statusSchema = z.enum([
   "NEW",
@@ -31,37 +52,14 @@ export const deliveryStatusSchema = z.enum([
   "DELIVERED",
   "RETURNED",
 ]);
-export const sizeSchema = z.enum(["SMALL", "MEDIUM", "LARGE"]);
-export const crustSchema = z.enum(["NONE", "CREAM", "CHEDDAR"]);
 export const paymentSchema = z.enum(["PREPAID", "CASH", "CARD"]);
 
-export const productSchema = z.object({
-  id: text(80),
-  name: text(80),
-  description: z.string().max(240),
-  category: z.enum(["PIZZA", "DRINK"]),
-  enabled: z.boolean(),
-  photo: productPhotoSchema.nullable().optional(),
-  prices: z.object({
-    SMALL: moneySchema.positive(),
-    MEDIUM: moneySchema.positive(),
-    LARGE: moneySchema.positive(),
-  }),
-});
 export const driverSchema = z.object({
   id: text(80),
   name: text(80),
   initials: text(3),
   available: z.boolean(),
   color: z.enum(["gold", "blue", "purple"]),
-});
-export const itemSchema = z.object({
-  id: text(100),
-  name: text(180),
-  detail: z.string().max(240),
-  note: z.string().max(240),
-  quantity: z.number().int().min(1).max(20),
-  unitPrice: moneySchema.positive(),
 });
 export const eventSchema = z.object({
   id: text(120),
@@ -183,7 +181,7 @@ export const orderSchema = z
   });
 export const stateSchema = z
   .object({
-    schema: z.literal(2),
+    schema: z.literal(3),
     demoId: text(100),
     revision: z.number().int().nonnegative(),
     nextNumber: z.number().int().positive(),
@@ -192,7 +190,7 @@ export const stateSchema = z
       targetMinutes: z.number().int().min(10).max(120),
       defaultFee: moneySchema.max(10000),
     }),
-    products: z.array(productSchema).min(1).max(100),
+    products: z.array(productSchema).min(1).max(CATALOG_LIMIT),
     drivers: z.array(driverSchema).max(50),
     promotions: z.array(promotionSchema).max(100),
     orders: z.array(orderSchema).max(500),
@@ -235,6 +233,19 @@ export const stateSchema = z
         code: "custom",
         message: "Promoção do pedido não encontrada.",
       });
+    for (const product of state.products.filter(
+      (p) => p.category === "COMBO",
+    )) {
+      try {
+        comboComponents(state.products, product);
+      } catch (error) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            error instanceof Error ? error.message : "Composição inválida.",
+        });
+      }
+    }
     for (const promotion of state.promotions) {
       const usage = promotionUsage(promotion, state.orders);
       if (
@@ -248,19 +259,6 @@ export const stateSchema = z
     }
   });
 
-const pizzaDraft = z.object({
-  kind: z.literal("PIZZA"),
-  flavorIds: z.array(text(80)).min(1).max(2),
-  size: sizeSchema,
-  crust: crustSchema,
-  quantity: z.number().int().min(1).max(20),
-  note: z.string().trim().max(240),
-});
-const drinkDraft = z.object({
-  kind: z.literal("DRINK"),
-  productId: text(80),
-  quantity: z.number().int().min(1).max(20),
-});
 export const draftSchema = z.object({
   customer: text(80),
   channel: z.enum(["APP", "WHATSAPP", "COUNTER"]),
@@ -272,10 +270,7 @@ export const draftSchema = z.object({
   cashTendered: moneySchema,
   fee: moneySchema.max(10000),
   promotionId: text(100).nullable().optional(),
-  items: z
-    .array(z.discriminatedUnion("kind", [pizzaDraft, drinkDraft]))
-    .min(1)
-    .max(30),
+  items: z.array(itemDraftSchema).min(1).max(30),
 });
 
 export type Status = z.infer<typeof statusSchema>;
@@ -315,16 +310,6 @@ export type Command =
   | { type: "PROMOTION"; promotion: Promotion; expectedVersion: number | null }
   | { type: "SETTINGS"; targetMinutes: number; defaultFee: number };
 
-export const sizeLabels = {
-  SMALL: "Pequena · 4 fatias",
-  MEDIUM: "Média · 6 fatias",
-  LARGE: "Grande · 8 fatias",
-};
-export const crusts = {
-  NONE: { name: "Sem borda recheada", price: 0 },
-  CREAM: { name: "Borda de requeijão", price: 1000 },
-  CHEDDAR: { name: "Borda de cheddar", price: 1000 },
-};
 export const statusLabels: Record<Status, string> = {
   NEW: "Novo",
   CONFIRMED: "A preparar",
@@ -358,69 +343,12 @@ export const brl = (cents: number) =>
 export const minutesWaiting = (order: Order, now: number) =>
   Math.max(0, Math.floor((now - order.createdAt) / 60_000));
 
-export class DomainError extends Error {}
 const requireThat: (ok: unknown, message: string) => asserts ok = (
   ok,
   message,
 ) => {
   if (!ok) throw new DomainError(message);
 };
-
-export function priceItems(
-  products: Product[],
-  items: ItemDraft[],
-): Order["items"] {
-  return items.map((item, index) => {
-    requireThat(
-      Number.isInteger(item.quantity) &&
-        item.quantity > 0 &&
-        item.quantity <= 20,
-      "Quantidade inválida.",
-    );
-    if (item.kind === "DRINK") {
-      const product = products.find(
-        (p) => p.id === item.productId && p.category === "DRINK" && p.enabled,
-      );
-      requireThat(product, "Bebida indisponível. Revise os itens.");
-      return {
-        id: `item-${index}`,
-        name: product.name,
-        detail: product.description,
-        note: "",
-        quantity: item.quantity,
-        unitPrice: product.prices.MEDIUM,
-      };
-    }
-    requireThat(
-      item.flavorIds.length >= 1 &&
-        item.flavorIds.length <= 2 &&
-        new Set(item.flavorIds).size === item.flavorIds.length,
-      "Escolha um ou dois sabores diferentes.",
-    );
-    const flavors = item.flavorIds.map((id) =>
-      products.find((p) => p.id === id && p.category === "PIZZA" && p.enabled),
-    );
-    requireThat(
-      flavors.every(Boolean),
-      "Um dos sabores está indisponível. Revise os itens.",
-    );
-    const valid = flavors as Product[];
-    const name =
-      valid.length === 2
-        ? valid.map((p) => `½ ${p.name}`).join(" + ")
-        : valid[0].name;
-    return {
-      id: `item-${index}`,
-      name,
-      detail: `${sizeLabels[item.size]} · ${crusts[item.crust].name}`,
-      note: item.note,
-      quantity: item.quantity,
-      unitPrice:
-        Math.max(...valid.map((p) => p.prices[item.size])) +
-        crusts[item.crust].price,
-    };
-  });
-}
 
 export function quoteOrder(
   state: State,
@@ -446,7 +374,8 @@ export function quoteOrder(
     const lines: PromotionSnapshot["lines"] = [];
     draft.items.forEach((item, index) => {
       if (item.kind !== "PIZZA" || available <= 0) return;
-      const baseUnitPrice = items[index].unitPrice - crusts[item.crust].price;
+      const baseUnitPrice =
+        items[index].unitPrice - resolveCrust(state.products, item.crust).price;
       const discountPerUnit = discountPerPizza(p.kind, p.value, baseUnitPrice);
       const quantity = Math.min(item.quantity, available);
       if (discountPerUnit <= 0) return;
@@ -491,15 +420,10 @@ export function quoteOrder(
 
 /** Upgrade existing local data without repricing or replacing any historic order. */
 export function migrateState(raw: unknown): State {
-  if (
-    typeof raw === "object" &&
-    raw !== null &&
-    "schema" in raw &&
-    raw.schema === 1 &&
-    "orders" in raw &&
-    Array.isArray(raw.orders)
-  ) {
-    return stateSchema.parse({
+  if (typeof raw !== "object" || raw === null || !("schema" in raw))
+    return stateSchema.parse(raw);
+  if (raw.schema === 1 && "orders" in raw && Array.isArray(raw.orders)) {
+    return migrateState({
       ...raw,
       schema: 2,
       promotions: [],
@@ -509,6 +433,25 @@ export function migrateState(raw: unknown): State {
         promotion: null,
       })),
     });
+  }
+  if (raw.schema === 2 && "products" in raw && Array.isArray(raw.products)) {
+    const products = raw.products.map((p) =>
+      productSchema.parse({
+        ...p,
+        ...(p.category === "PIZZA"
+          ? { pizzaGroup: p.pizzaGroup ?? "TRADITIONAL" }
+          : {}),
+      }),
+    );
+    for (const crust of defaultCrustProducts()) {
+      const existing = products.find((p) => p.id === crust.id);
+      requireThat(
+        !existing || existing.category === "CRUST",
+        "Identificador de borda em conflito. Os dados anteriores foram preservados.",
+      );
+      if (!existing) products.push(crust);
+    }
+    return stateSchema.parse({ ...raw, schema: 3, products });
   }
   return stateSchema.parse(raw);
 }
@@ -538,7 +481,7 @@ export function applyCommand(
     requireThat(
       (!draft.promotionId && command.expectedQuote === undefined) ||
         command.expectedQuote === signature,
-      "O preço ou a disponibilidade da promoção mudou. Confira o resumo atualizado antes de criar o pedido.",
+      "O preço, a composição ou a disponibilidade mudou. Confira o resumo atualizado antes de criar o pedido.",
     );
     requireThat(
       draft.mode === "PICKUP" || draft.address.length >= 5,
@@ -734,8 +677,8 @@ export function applyCommand(
   } else if (command.type === "ADD_PRODUCT") {
     const product = productSchema.parse(command.product);
     requireThat(
-      state.products.length < 100,
-      "Limite de 100 produtos nesta demonstração.",
+      state.products.length < CATALOG_LIMIT,
+      `Limite de ${CATALOG_LIMIT} produtos nesta demonstração.`,
     );
     requireThat(
       !state.products.some((p) => p.id === product.id),

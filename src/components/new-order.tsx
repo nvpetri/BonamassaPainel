@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Plus, Pizza, ShoppingBag, Trash2, Wine } from "lucide-react";
+import { Plus, Pizza, ShoppingBag, Trash2 } from "lucide-react";
 import {
   brl,
-  crusts,
   priceItems,
   quoteOrder,
-  sizeLabels,
   type Draft,
   type ItemDraft,
 } from "@/domain/model";
@@ -16,22 +14,21 @@ import { promotionStatus, promotionUsage } from "@/domain/promotions";
 import { discountLabel } from "./promotions";
 import { Button, Field, Modal, MoneyInput, moneyText, parseMoney } from "./ui";
 
-export function NewOrder({ onClose }: { onClose(): void }) {
+import { ItemBuilder } from "./item-builder";
+import { ItemComponents } from "./order-components";
+
+export function NewOrder({
+  onClose,
+  initialItem,
+}: {
+  onClose(): void;
+  initialItem?: ItemDraft;
+}) {
   const { state, now, busy, execute, notify } = usePanel();
   const products = state!.products;
-  const [kind, setKind] = useState<"PIZZA" | "DRINK">("PIZZA");
-  const [flavor, setFlavor] = useState(
-    products.find((p) => p.category === "PIZZA" && p.enabled)?.id ?? "",
+  const [items, setItems] = useState<ItemDraft[]>(
+    initialItem ? [initialItem] : [],
   );
-  const [second, setSecond] = useState("");
-  const [drink, setDrink] = useState(
-    products.find((p) => p.category === "DRINK" && p.enabled)?.id ?? "",
-  );
-  const [size, setSize] = useState<"SMALL" | "MEDIUM" | "LARGE">("LARGE");
-  const [crust, setCrust] = useState<keyof typeof crusts>("NONE");
-  const [quantity, setQuantity] = useState(1);
-  const [itemNote, setItemNote] = useState("");
-  const [items, setItems] = useState<ItemDraft[]>([]);
   const [customer, setCustomer] = useState("");
   const [channel, setChannel] = useState<Draft["channel"]>("COUNTER");
   const [mode, setMode] = useState<Draft["mode"]>("DELIVERY");
@@ -79,27 +76,6 @@ export function NewOrder({ onClose }: { onClose(): void }) {
     (sum, item) => sum + (item.kind === "PIZZA" ? item.quantity : 0),
     0,
   );
-  const addItem = () => {
-    const item: ItemDraft =
-      kind === "PIZZA"
-        ? {
-            kind,
-            flavorIds: second ? [flavor, second] : [flavor],
-            size,
-            crust,
-            quantity,
-            note: itemNote.trim(),
-          }
-        : { kind, productId: drink, quantity };
-    try {
-      priceItems(products, [item]);
-      setItems([...items, item]);
-      setQuantity(1);
-      setItemNote("");
-    } catch (error) {
-      notify(error instanceof Error ? error.message : "Confira o item.", true);
-    }
-  };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!items.length) {
@@ -224,152 +200,12 @@ export function NewOrder({ onClose }: { onClose(): void }) {
             <div className="section-label">
               <span>02</span> Itens do pedido
             </div>
-            <div className="item-builder">
-              <div className="segmented">
-                <button
-                  type="button"
-                  className={kind === "PIZZA" ? "selected" : ""}
-                  onClick={() => setKind("PIZZA")}
-                  aria-pressed={kind === "PIZZA"}
-                >
-                  <Pizza size={16} /> Pizza
-                </button>
-                <button
-                  type="button"
-                  className={kind === "DRINK" ? "selected" : ""}
-                  onClick={() => setKind("DRINK")}
-                  aria-pressed={kind === "DRINK"}
-                >
-                  <Wine size={16} /> Bebida
-                </button>
-              </div>
-              {kind === "PIZZA" ? (
-                <>
-                  <div className="form-row">
-                    <Field label="Sabor principal">
-                      <select
-                        value={flavor}
-                        onChange={(e) => {
-                          setFlavor(e.target.value);
-                          if (second === e.target.value) setSecond("");
-                        }}
-                      >
-                        <option value="" disabled>
-                          Selecione
-                        </option>
-                        {products
-                          .filter((p) => p.category === "PIZZA")
-                          .map((p) => (
-                            <option
-                              key={p.id}
-                              value={p.id}
-                              disabled={!p.enabled}
-                            >
-                              {p.name}
-                              {!p.enabled ? " · indisponível" : ""}
-                            </option>
-                          ))}
-                      </select>
-                    </Field>
-                    <Field label="Segundo sabor">
-                      <select
-                        value={second}
-                        onChange={(e) => setSecond(e.target.value)}
-                      >
-                        <option value="">Pizza inteira</option>
-                        {products
-                          .filter(
-                            (p) => p.category === "PIZZA" && p.id !== flavor,
-                          )
-                          .map((p) => (
-                            <option
-                              key={p.id}
-                              value={p.id}
-                              disabled={!p.enabled}
-                            >
-                              {p.name}
-                            </option>
-                          ))}
-                      </select>
-                    </Field>
-                  </div>
-                  <div className="form-row">
-                    <Field label="Tamanho">
-                      <select
-                        value={size}
-                        onChange={(e) => setSize(e.target.value as typeof size)}
-                      >
-                        {Object.entries(sizeLabels).map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Borda">
-                      <select
-                        value={crust}
-                        onChange={(e) =>
-                          setCrust(e.target.value as typeof crust)
-                        }
-                      >
-                        {Object.entries(crusts).map(([key, item]) => (
-                          <option key={key} value={key}>
-                            {item.name}
-                            {item.price ? ` + ${brl(item.price)}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
-                  <Field label="Observação da pizza">
-                    <input
-                      value={itemNote}
-                      maxLength={240}
-                      onChange={(e) => setItemNote(e.target.value)}
-                      placeholder="Ex.: sem cebola, bem assada"
-                    />
-                  </Field>
-                  <p className="field-hint">
-                    Meia pizza: vale o preço do sabor mais caro. Regra de
-                    demonstração.
-                  </p>
-                </>
-              ) : (
-                <Field label="Bebida">
-                  <select
-                    value={drink}
-                    onChange={(e) => setDrink(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      Selecione
-                    </option>
-                    {products
-                      .filter((p) => p.category === "DRINK")
-                      .map((p) => (
-                        <option key={p.id} value={p.id} disabled={!p.enabled}>
-                          {p.name} · {brl(p.prices.MEDIUM)}
-                        </option>
-                      ))}
-                  </select>
-                </Field>
-              )}
-              <div className="builder-footer">
-                <Field label="Quantidade">
-                  <input
-                    aria-label="Quantidade do item"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
-                  />
-                </Field>
-                <Button onClick={addItem} disabled={items.length >= 30}>
-                  <Plus size={16} /> Adicionar item
-                </Button>
-              </div>
-            </div>
+            <ItemBuilder
+              products={products}
+              allowCombos
+              disabled={busy || items.length >= 30}
+              onAdd={(item) => setItems([...items, item])}
+            />
             <Field label="Observações gerais">
               <textarea
                 rows={2}
@@ -398,6 +234,12 @@ export function NewOrder({ onClose }: { onClose(): void }) {
                       : `Item ${index + 1} indisponível`}
                   </strong>
                   <small>{lines[index]?.detail}</small>
+                  {lines[index]?.components && (
+                    <ItemComponents
+                      components={lines[index].components!}
+                      multiplier={lines[index].quantity}
+                    />
+                  )}
                   {lines[index]?.note && (
                     <small className="gold-text">{lines[index].note}</small>
                   )}
@@ -420,7 +262,7 @@ export function NewOrder({ onClose }: { onClose(): void }) {
               <div className="order-promotion">
                 <Field
                   label="Promoção do pedido"
-                  hint="Uma promoção por pedido. Desconto só nas pizzas, sem borda, bebidas e entrega."
+                  hint="Uma promoção por pedido. Desconto só nas pizzas avulsas, sem bordas, bebidas, combos e entrega."
                 >
                   <select
                     value={promotionId}

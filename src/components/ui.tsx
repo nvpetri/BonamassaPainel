@@ -26,6 +26,7 @@ import {
   type Status,
 } from "@/domain/model";
 import { usePanel } from "./panel-provider";
+import { ItemComponents } from "./order-components";
 
 export function Button({
   children,
@@ -33,7 +34,7 @@ export function Button({
   tone = "secondary",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  tone?: "primary" | "secondary" | "danger" | "gold" | "ghost";
+  tone?: "primary" | "secondary" | "danger" | "success" | "gold" | "ghost";
 }) {
   return (
     <button type="button" {...props} className={`button ${tone} ${className}`}>
@@ -292,6 +293,12 @@ export function OrderCard({
             <div>
               <strong>{item.name}</strong>
               <small>{item.detail}</small>
+              {item.components && (
+                <ItemComponents
+                  components={item.components}
+                  multiplier={item.quantity}
+                />
+              )}
               {item.note && <span className="item-note">{item.note}</span>}
             </div>
           </div>

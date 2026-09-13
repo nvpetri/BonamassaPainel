@@ -1,3 +1,4 @@
+import { defaultCrustProducts } from "./catalog";
 import {
   applyCommand,
   type Draft,
@@ -8,7 +9,7 @@ import {
 
 export function createDemo(now = Date.now()): State {
   let state: State = {
-    schema: 2,
+    schema: 3,
     demoId: crypto.randomUUID(),
     revision: 0,
     nextNumber: 1039,
@@ -21,6 +22,7 @@ export function createDemo(now = Date.now()): State {
         name: "Mussarela",
         description: "Mussarela, molho de tomate e orégano.",
         category: "PIZZA",
+        pizzaGroup: "TRADITIONAL",
         enabled: true,
         prices: { SMALL: 3500, MEDIUM: 4500, LARGE: 5500 },
       },
@@ -29,6 +31,7 @@ export function createDemo(now = Date.now()): State {
         name: "Calabresa",
         description: "Calabresa fatiada, cebola e azeitonas.",
         category: "PIZZA",
+        pizzaGroup: "TRADITIONAL",
         enabled: true,
         prices: { SMALL: 3900, MEDIUM: 4900, LARGE: 5900 },
       },
@@ -37,6 +40,7 @@ export function createDemo(now = Date.now()): State {
         name: "Frango com requeijão",
         description: "Frango desfiado, requeijão e milho.",
         category: "PIZZA",
+        pizzaGroup: "TRADITIONAL",
         enabled: true,
         prices: { SMALL: 4300, MEDIUM: 5500, LARGE: 6500 },
       },
@@ -45,6 +49,7 @@ export function createDemo(now = Date.now()): State {
         name: "Portuguesa",
         description: "Presunto, ovos, cebola, ervilha e mussarela.",
         category: "PIZZA",
+        pizzaGroup: "TRADITIONAL",
         enabled: true,
         prices: { SMALL: 4500, MEDIUM: 5700, LARGE: 6900 },
       },
@@ -53,6 +58,7 @@ export function createDemo(now = Date.now()): State {
         name: "Quatro queijos",
         description: "Mussarela, provolone, parmesão e requeijão.",
         category: "PIZZA",
+        pizzaGroup: "SPECIAL",
         enabled: true,
         prices: { SMALL: 4900, MEDIUM: 5900, LARGE: 7500 },
       },
@@ -61,6 +67,7 @@ export function createDemo(now = Date.now()): State {
         name: "Marguerita",
         description: "Mussarela, tomate fresco e manjericão.",
         category: "PIZZA",
+        pizzaGroup: "TRADITIONAL",
         enabled: true,
         prices: { SMALL: 4500, MEDIUM: 5500, LARGE: 6500 },
       },
@@ -79,6 +86,26 @@ export function createDemo(now = Date.now()): State {
         category: "DRINK",
         enabled: true,
         prices: { SMALL: 500, MEDIUM: 500, LARGE: 500 },
+      },
+      ...defaultCrustProducts(),
+      {
+        id: "combo-dupla",
+        name: "Combo da casa",
+        description: "Uma calabresa grande e refrigerante 2 L para acompanhar.",
+        category: "COMBO",
+        enabled: true,
+        prices: { SMALL: 6500, MEDIUM: 6500, LARGE: 6500 },
+        combo: [
+          {
+            kind: "PIZZA",
+            flavorIds: ["calabresa"],
+            size: "LARGE",
+            crust: "NONE",
+            quantity: 1,
+            note: "",
+          },
+          { kind: "DRINK", productId: "refri", quantity: 1 },
+        ],
       },
     ],
     drivers: [

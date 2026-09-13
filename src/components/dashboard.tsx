@@ -49,7 +49,8 @@ import { usePanel } from "./panel-provider";
 import { Badge, Button, Empty, Modal, OrderCard, StatusBadge } from "./ui";
 import { NewOrder } from "./new-order";
 import { CardAction, OrderDetail } from "./order-detail";
-import { Catalog, Deliveries, Settings } from "./management";
+import { Deliveries, Settings } from "./management";
+import { Catalog } from "./catalog";
 import { Promotions } from "./promotions";
 
 const navigation = [
@@ -153,6 +154,10 @@ export function Dashboard({ view }: { view: View }) {
     toggleSound,
   } = usePanel();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cancelRequest, setCancelRequest] = useState<{
+    id: string;
+    version: number;
+  } | null>(null);
   const [newOrder, setNewOrder] = useState(false);
   const [help, setHelp] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -690,6 +695,13 @@ export function Dashboard({ view }: { view: View }) {
                                 order={order}
                                 onOpen={() => setSelectedId(order.id)}
                                 kitchen={view === "cozinha"}
+                                onCancel={() => {
+                                  setCancelRequest({
+                                    id: order.id,
+                                    version: order.version,
+                                  });
+                                  setSelectedId(order.id);
+                                }}
                               />
                             </OrderCard>
                           ))}
@@ -793,7 +805,15 @@ export function Dashboard({ view }: { view: View }) {
         <OrderDetail
           key={selected.id}
           order={selected}
-          onClose={() => setSelectedId(null)}
+          initialCancelVersion={
+            cancelRequest?.id === selected.id
+              ? cancelRequest.version
+              : undefined
+          }
+          onClose={() => {
+            setSelectedId(null);
+            setCancelRequest(null);
+          }}
         />
       )}
       {newOrder && <NewOrder onClose={() => setNewOrder(false)} />}

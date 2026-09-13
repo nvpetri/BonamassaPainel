@@ -71,15 +71,25 @@ Itens de criação carregam referências de produto/sabor, tamanho, borda e quan
 
 ## Cadastro e fotos na API
 
-A versão 0.3 adiciona `ADD_PRODUCT` e o campo opcional `Product.photo`. Na demo, esse campo contém a imagem otimizada como data URL local, incluída no snapshot e na exportação JSON. O original não é salvo. A atualização do produto e da foto acontece na mesma transação IndexedDB; cancelar a edição não grava a prévia. O banco local usa versão 3 para impedir escritas de abas antigas que removeriam campos desconhecidos, mantendo o snapshot no schema 2.
+A versão 0.3 adiciona `ADD_PRODUCT` e o campo opcional `Product.photo`. Na demo, esse campo contém a imagem otimizada como data URL local, incluída no snapshot e na exportação JSON. O original não é salvo. A atualização do produto e da foto acontece na mesma transação IndexedDB; cancelar a edição não grava a prévia. O banco local usa versão 4 para impedir escritas de abas antigas que removeriam campos desconhecidos; o snapshot usa schema 3.
 
 Na API, substituir o data URL por uma referência de imagem em storage (por exemplo, R2/S3) e URL adequada à leitura do cardápio. O endpoint de upload deve autenticar o gestor, conferir loja, tamanho e conteúdo real, decodificar e otimizar no servidor. A validação e a compressão do navegador melhoram a experiência, mas não substituem as do servidor. Associar a nova imagem ao produto ao confirmar o cadastro, e tratar descarte de uploads abandonados e exclusão de imagens substituídas sem afetar pedidos existentes.
 
 O cadastro deve validar os preços em centavos e impedir nomes duplicados na mesma categoria/loja sob concorrência, seguindo a normalização acordada. Edição precisa de versão esperada, inclusive ao trocar foto ou disponibilidade. Produtos novos devem aparecer no catálogo dos apps após a confirmação da API. Fotos não devem ser copiadas para cada item do pedido, evento de produção ou notificação da cozinha.
 
+## Categorias, bordas e composição dos combos
+
+`src/domain/catalog.ts` define `Product.category` (`PIZZA`, `CRUST`, `DRINK`, `COMBO`), `pizzaGroup` (`TRADITIONAL` ou `SPECIAL`), referências de bordas e composição fixa dos combos. Meio a meio usa um item `PIZZA` com dois `flavorIds`, sem gerar um novo produto para cada combinação. Bordas têm preço único, somado uma vez por pizza; `NONE` representa a borda sem recheio, gratuita. Os IDs `CREAM` e `CHEDDAR` são preservados na migração dos exemplos antigos.
+
+`Product.combo` contém de 2 a 6 linhas `PIZZA`/`DRINK`, com referências de catálogo, tamanho, borda, quantidade e observações. Um item de pedido `COMBO` envia apenas `productId`, `quantity` e `note`. O servidor deve resolver e validar todos os componentes e sua disponibilidade na mesma transação do pedido, aplicar o preço fechado e salvar um snapshot `items[].components`. As quantidades do snapshot são por combo; a interface multiplica por `items[].quantity` apenas para exibir a produção. Não cobrar os componentes novamente nem reaplicar descontos de pizza ao combo.
+
+O snapshot da receita deve sobreviver a pausas, mudanças de preço/nome, alterações e eventual remoção dos produtos. Novas vendas respeitam a disponibilidade de todos os componentes. No catálogo, referências devem existir e corresponder à categoria correta; não permitir combos recursivos. A proposta inicial tem composição fixa e preço único; opções de troca dentro do combo e borda por tamanho exigem regras adicionais a combinar com a pizzaria.
+
+Ao migrar o schema 2, preservar os dados anteriores, classificar sabores sem grupo como tradicionais e cadastrar as bordas existentes. O limite local passa a 200 produtos para permitir a migração inclusive de um catálogo anterior com 100 produtos. A API deve ter limites próprios definidos por estabelecimento.
+
 ## Promoções e reservas no servidor
 
-A demo usa schema 2 e migra o schema 1 sem recalcular os pedidos antigos. `src/domain/promotions.ts` define desconto percentual/valor fixo, vigência, cota e snapshot do desconto; `quoteOrder` calcula o desconto por pizza, excluindo borda, bebidas e entrega. A proposta atual é selecionar uma única promoção por pedido, válida para todos os sabores/tamanhos. Confirmar essa política com a pizzaria antes da integração.
+A demo usa schema 3 e migra os schemas 1 e 2 sem recalcular os pedidos antigos. `src/domain/promotions.ts` define desconto percentual/valor fixo, vigência, cota e snapshot do desconto; `quoteOrder` calcula o desconto por pizza, excluindo borda, bebidas, combos e entrega. A proposta atual é selecionar uma única promoção por pedido, válida para todos os sabores/tamanhos. Confirmar essa política com a pizzaria antes da integração.
 
 Cada pedido guarda `discount` em centavos e um snapshot `promotion`: identidade, versão, nome, regra, horário de aplicação, quantidade e alocação por item. A versão local deriva o consumo dos pedidos: concluídos são vendidos; em andamento são reservados; cancelados/devolvidos não ocupam cota. Uma tentativa em retorno continua reservada até a devolução ser confirmada. Mudanças da campanha nunca recalculam snapshots históricos.
 

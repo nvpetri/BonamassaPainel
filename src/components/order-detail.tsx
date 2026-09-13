@@ -22,6 +22,7 @@ import {
   type OrderAction,
 } from "@/domain/model";
 import { usePanel } from "./panel-provider";
+import { ItemComponents } from "./order-components";
 import { Badge, Button, Field, Modal, StatusBadge } from "./ui";
 
 export function nextAction(
@@ -65,10 +66,12 @@ export function CardAction({
   order,
   onOpen,
   kitchen = false,
+  onCancel,
 }: {
   order: Order;
   onOpen(): void;
   kitchen?: boolean;
+  onCancel?(): void;
 }) {
   const { execute, busy } = usePanel();
   const next = nextAction(order);
@@ -81,49 +84,67 @@ export function CardAction({
   const Icon = actionIcons[next.action];
   const expediting = kitchen && order.status === "READY";
   return (
-    <Button
-      className="full"
-      tone={
-        order.status === "NEW"
-          ? "primary"
-          : order.status === "PREPARING"
-            ? "gold"
-            : "secondary"
-      }
-      disabled={busy}
-      onClick={() => {
-        if (next.simple && !expediting)
-          void execute(
-            {
-              type: "ORDER",
-              id: order.id,
-              version: order.version,
-              action: next.action,
-            },
-            "Etapa do pedido atualizada.",
-          );
-        else onOpen();
-      }}
-    >
-      <Icon size={16} />
-      {expediting ? "Ver expedição" : next.label}
-      {!expediting && <ArrowRight size={14} className="end-icon" />}
-    </Button>
+    <div className="card-actions-stack">
+      <Button
+        className="full"
+        tone={
+          order.status === "NEW"
+            ? "success"
+            : order.status === "PREPARING"
+              ? "gold"
+              : "secondary"
+        }
+        disabled={busy}
+        onClick={() => {
+          if (next.simple && !expediting)
+            void execute(
+              {
+                type: "ORDER",
+                id: order.id,
+                version: order.version,
+                action: next.action,
+              },
+              "Etapa do pedido atualizada.",
+            );
+          else onOpen();
+        }}
+      >
+        <Icon size={16} />
+        {expediting ? "Ver expedição" : next.label}
+        {!expediting && <ArrowRight size={14} className="end-icon" />}
+      </Button>
+      {order.status === "NEW" && onCancel && (
+        <Button
+          tone="danger"
+          className="full cancel-order"
+          disabled={busy}
+          onClick={onCancel}
+        >
+          <X size={16} /> Cancelar pedido
+        </Button>
+      )}
+    </div>
   );
 }
 
 export function OrderDetail({
   order,
   onClose,
+  initialCancelVersion,
 }: {
   order: Order;
+  initialCancelVersion?: number;
   onClose(): void;
 }) {
   const { state, execute, busy, notify } = usePanel();
   const [intent, setIntent] = useState<{
     action: OrderAction;
     version: number;
-  } | null>(null);
+  } | null>(
+    initialCancelVersion === undefined
+      ? null
+      : { action: "CANCEL", version: initialCancelVersion },
+  );
   const [driverId, setDriverId] = useState("");
   const [reason, setReason] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -229,6 +250,12 @@ export function OrderDetail({
               <div>
                 <strong>{item.name}</strong>
                 <small>{item.detail}</small>
+                {item.components && (
+                  <ItemComponents
+                    components={item.components}
+                    multiplier={item.quantity}
+                  />
+                )}
                 {item.note && <span className="item-note">{item.note}</span>}
               </div>
               <b>{brl(item.quantity * item.unitPrice)}</b>
@@ -434,25 +461,37 @@ export function OrderDetail({
         ) : (
           <>
             <div className="detail-buttons">
-              {next && (
-                <Button
-                  tone="primary"
-                  disabled={busy}
-                  onClick={() => {
-                    if (next.simple)
-                      void execute({
-                        type: "ORDER",
-                        id: order.id,
-                        version: order.version,
-                        action: next.action,
-                      });
-                    else begin(next.action);
-                  }}
-                >
-                  {next.label}
-                  <ArrowRight size={16} />
-                </Button>
-              )}
+              <div className="detail-actions-stack">
+                {next && (
+                  <Button
+                    tone={next.action === "ACCEPT" ? "success" : "primary"}
+                    disabled={busy}
+                    onClick={() => {
+                      if (next.simple)
+                        void execute({
+                          type: "ORDER",
+                          id: order.id,
+                          version: order.version,
+                          action: next.action,
+                        });
+                      else begin(next.action);
+                    }}
+                  >
+                    {next.label}
+                    <ArrowRight size={16} />
+                  </Button>
+                )}
+                {cancellable && (
+                  <Button
+                    tone="danger"
+                    className="cancel-order"
+                    disabled={busy}
+                    onClick={() => begin("CANCEL")}
+                  >
+                    <X size={16} /> Cancelar pedido
+                  </Button>
+                )}
+              </div>
               <Button
                 onClick={() => window.print()}
                 aria-label="Imprimir comanda"
@@ -461,11 +500,6 @@ export function OrderDetail({
               </Button>
             </div>
             <div className="detail-secondary">
-              {cancellable && (
-                <Button tone="ghost" onClick={() => begin("CANCEL")}>
-                  Cancelar pedido
-                </Button>
-              )}
               {order.status === "OUT_FOR_DELIVERY" && (
                 <Button tone="ghost" onClick={() => begin("ISSUE")}>
                   Registrar problema na entrega

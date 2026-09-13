@@ -29,7 +29,7 @@ export const viewInfo: Record<
   },
   cardapio: {
     title: "Cardápio",
-    subtitle: "Seus sabores, fotos e preços em um só lugar.",
+    subtitle: "Pizzas, bordas, bebidas e combos em um só lugar.",
     section: "Gestão",
   },
   promocoes: {
