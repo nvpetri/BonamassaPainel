@@ -1,5 +1,7 @@
 "use client";
 
+import { randomId } from "@/data/api-client";
+
 import { useState, type FormEvent } from "react";
 import {
   Circle,
@@ -137,7 +139,7 @@ export function Catalog() {
       </nav>
       {products.length >= CATALOG_LIMIT && (
         <p className="field-hint">
-          Você atingiu o limite de {CATALOG_LIMIT} produtos desta demonstração.
+          Você atingiu o limite de {CATALOG_LIMIT} produtos.
         </p>
       )}
       <div className="board-toolbar catalog-toolbar">
@@ -488,7 +490,7 @@ function EditProduct({
       return;
     }
     const saved: Product = {
-      id: product?.id ?? crypto.randomUUID(),
+      id: product?.id ?? randomId(),
       category,
       enabled,
       name: name.trim(),
@@ -515,7 +517,7 @@ function EditProduct({
   return (
     <Modal
       title={product ? "Editar produto" : createLabels[category]}
-      subtitle="Alterações valem para novos pedidos desta demonstração."
+      subtitle="Alterações valem para novos pedidos."
       onClose={onClose}
     >
       <form onSubmit={submit}>

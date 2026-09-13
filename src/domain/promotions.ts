@@ -90,9 +90,12 @@ export type PromotionSnapshot = z.infer<typeof promotionSnapshotSchema>;
 type UsageOrder = { status: string; promotion: PromotionSnapshot | null };
 
 export function promotionUsage(
-  promotion: Pick<Promotion, "id" | "pizzaLimit">,
+  promotion: Pick<Promotion, "id" | "pizzaLimit"> & {
+    apiUsage?: { sold: number; reserved: number; remaining: number | null };
+  },
   orders: UsageOrder[],
 ) {
+  if (promotion.apiUsage) return promotion.apiUsage;
   let sold = 0;
   let reserved = 0;
   for (const order of orders) {

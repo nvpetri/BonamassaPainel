@@ -27,7 +27,17 @@ import { Badge, Button, Field, Modal, StatusBadge } from "./ui";
 
 export function nextAction(
   order: Order,
+  role?: string,
 ): { label: string; action: OrderAction; simple?: boolean } | null {
+  if (
+    role &&
+    ((["CONFIRMED", "PREPARING"].includes(order.status) &&
+      role === "ATTENDANT") ||
+      (order.mode === "DELIVERY" &&
+        (order.status === "OUT_FOR_DELIVERY" ||
+          (order.status === "READY" && !!order.driverId))))
+  )
+    return null;
   if (order.status === "NEW")
     return { label: "Aceitar pedido", action: "ACCEPT", simple: true };
   if (order.status === "CONFIRMED")
@@ -73,8 +83,8 @@ export function CardAction({
   kitchen?: boolean;
   onCancel?(): void;
 }) {
-  const { execute, busy } = usePanel();
-  const next = nextAction(order);
+  const { execute, busy, api } = usePanel();
+  const next = nextAction(order, api?.user?.role);
   if (!next)
     return (
       <Button className="full" onClick={onOpen}>
@@ -113,16 +123,18 @@ export function CardAction({
         {expediting ? "Ver expedição" : next.label}
         {!expediting && <ArrowRight size={14} className="end-icon" />}
       </Button>
-      {order.status === "NEW" && onCancel && (
-        <Button
-          tone="danger"
-          className="full cancel-order"
-          disabled={busy}
-          onClick={onCancel}
-        >
-          <X size={16} /> Cancelar pedido
-        </Button>
-      )}
+      {order.status === "NEW" &&
+        onCancel &&
+        (!api || api.user?.role === "MANAGER") && (
+          <Button
+            tone="danger"
+            className="full cancel-order"
+            disabled={busy}
+            onClick={onCancel}
+          >
+            <X size={16} /> Cancelar pedido
+          </Button>
+        )}
     </div>
   );
 }
@@ -136,7 +148,7 @@ export function OrderDetail({
   initialCancelVersion?: number;
   onClose(): void;
 }) {
-  const { state, execute, busy, notify } = usePanel();
+  const { state, execute, busy, notify, api } = usePanel();
   const [intent, setIntent] = useState<{
     action: OrderAction;
     version: number;
@@ -149,10 +161,11 @@ export function OrderDetail({
   const [reason, setReason] = useState("");
   const [recipient, setRecipient] = useState("");
   const [paid, setPaid] = useState(false);
-  const next = nextAction(order);
+  const next = nextAction(order, api?.user?.role);
   const driver = state!.drivers.find((d) => d.id === order.driverId);
   const stale = intent && intent.version !== order.version;
   const cancellable =
+    (!api || api.user?.role === "MANAGER") &&
     ["NEW", "CONFIRMED", "PREPARING", "READY"].includes(order.status) &&
     order.deliveryStatus !== "COLLECTED";
   const begin = (action: OrderAction) => {
@@ -293,12 +306,16 @@ export function OrderDetail({
             <b>{brl(order.total)}</b>
           </div>
           <div className="payment-box">
-            <strong>{paymentLabels[order.payment]}</strong>
+            <strong>
+              {api && order.payment === "PREPAID"
+                ? "Pagamento registrado"
+                : paymentLabels[order.payment]}
+            </strong>
             <span>
               {order.total === 0
                 ? "Sem valor a cobrar"
                 : order.paymentCollected
-                  ? "Recebimento registrado na demonstração"
+                  ? "Recebimento registrado"
                   : isActive(order)
                     ? `Cobrar ${brl(order.total)} ao entregar`
                     : "Sem recebimento registrado"}
@@ -409,7 +426,7 @@ export function OrderDetail({
             )}
             {intent.action === "CANCEL" && order.payment === "PREPAID" && (
               <p className="field-hint">
-                Cancelar esta demonstração não realiza estorno.
+                Cancelar o pedido não realiza estorno.
               </p>
             )}
             {intent.action === "COMPLETE" && (
@@ -433,7 +450,7 @@ export function OrderDetail({
                     />{" "}
                     Confirmo o recebimento de {brl(order.total)}{" "}
                     {order.payment === "CASH" ? "em dinheiro" : "na maquininha"}{" "}
-                    (simulado)
+                    {api ? "" : "(simulado)"}
                   </label>
                 )}
               </>
@@ -500,7 +517,7 @@ export function OrderDetail({
               </Button>
             </div>
             <div className="detail-secondary">
-              {order.status === "OUT_FOR_DELIVERY" && (
+              {!api && order.status === "OUT_FOR_DELIVERY" && (
                 <Button tone="ghost" onClick={() => begin("ISSUE")}>
                   Registrar problema na entrega
                 </Button>

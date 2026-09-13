@@ -13,7 +13,8 @@ import { ZodError } from "zod";
 import { demoRepository } from "@/data/repository";
 import { type Command, type State } from "@/domain/model";
 
-interface PanelContextValue {
+export interface PanelContextValue {
+  api?: import("./api-provider").ApiContextValue;
   state: State | null;
   error: string | null;
   now: number;
@@ -26,7 +27,7 @@ interface PanelContextValue {
   sound: boolean;
   toggleSound(): void;
 }
-const Context = createContext<PanelContextValue | null>(null);
+export const Context = createContext<PanelContextValue | null>(null);
 const readableError = (error: unknown) =>
   error instanceof DOMException && error.name === "QuotaExceededError"
     ? "O armazenamento do navegador está cheio. A alteração não foi salva. Remova fotos que não utiliza ou libere espaço e tente novamente."
