@@ -2,7 +2,7 @@
 
 Painel web da pizzaria, com **recebimento de pedidos, cozinha (KDS) e expedição**. Interface em português, com a identidade preta, vermelha e dourada dos aplicativos Bonamassa.
 
-**Versão 0.2.0-demo:** funcional com dados locais de demonstração e promoções por prazo ou quantidade de pizzas. Ainda não há API central, autenticação ou conexão com os aplicativos Android. Nenhum pedido, pagamento ou mensagem real é enviado.
+**Versão 0.3.0-demo:** funcional com cadastro de sabores, fotos no cardápio e promoções por prazo ou quantidade de pizzas, usando dados locais de demonstração. Ainda não há API central, autenticação ou conexão com os aplicativos Android. Nenhum pedido, pagamento ou mensagem real é enviado.
 
 ![Painel de pedidos](docs/pedidos.png)
 
@@ -47,7 +47,7 @@ O terminal precisa continuar aberto enquanto o servidor estiver sendo usado. Enc
 | `/pedidos`       | Colunas/lista, busca, filtros, novo pedido, aceite, andamento, detalhes e pausa de novos pedidos                  |
 | `/cozinha`       | A preparar, em preparo e prontos; observações, tempo de espera e tela cheia                                       |
 | `/entregas`      | Disponibilidade, atribuição e troca de motoboy antes da coleta; simulação de retirada, saída, entrega e devolução |
-| `/cardapio`      | Busca, disponibilidade, edição de nomes, descrição e preços por tamanho                                           |
+| `/cardapio`      | Cadastro de novos sabores, fotos, busca, disponibilidade, descrição e preços por tamanho                          |
 | `/promocoes`     | Desconto percentual ou em reais por pizza, agendamento, prazo, limite de unidades, pausa e acompanhamento         |
 | `/historico`     | Concluídos, cancelados e devolvidos; busca, eventos e exportação CSV                                              |
 | `/configuracoes` | Meta de tempo, taxa padrão, exportação JSON e reinício confirmado da demo                                         |
@@ -55,6 +55,18 @@ O terminal precisa continuar aberto enquanto o servidor estiver sendo usado. Enc
 Os pedidos aceitam até dois sabores, três tamanhos, bordas, bebidas, quantidade e observações. O maior preço entre os sabores determina a pizza; a borda é somada uma vez por unidade. Valores são calculados em centavos. Essa regra, os sabores e todos os preços precisam ser aprovados pela pizzaria.
 
 Pagamentos são **registros simulados**: antecipado, dinheiro com troco ou cartão na maquininha. A conclusão exige recebedor e, no dinheiro/cartão com valor a cobrar, confirmação do recebimento. A taxa de entrega exibida é cobrada do cliente; não representa automaticamente a remuneração do motoboy.
+
+## Novos sabores e fotos
+
+Em **Cardápio → Novo sabor**, preencha nome, descrição e preços para pequena, média e grande. Você pode cadastrar o sabor disponível ou pausado. Depois de salvar, ele aparece no cardápio; quando disponível, também pode ser escolhido nos novos pedidos, inclusive meia a meia e com promoções.
+
+Use **Selecionar foto** no cadastro, ou **Editar → Selecionar foto** em um produto existente. A prévia aparece antes de salvar. Para substituir ou apagar, use **Trocar foto** ou **Remover foto** e confirme em **Salvar produto**. Cancelar a janela mantém o cadastro anterior. A foto é opcional, e os produtos sem imagem continuam com a ilustração padrão.
+
+- Arquivos aceitos: **JPG, PNG ou WebP, até 10 MB e 48 megapixels**. Arquivos inválidos mostram uma mensagem sem apagar a foto anterior.
+- O navegador decodifica e otimiza a imagem: até **1.200 pixels no maior lado** e **200 KB** por foto salva, em WebP ou JPEG. A imagem original não é armazenada. Os cartões usam enquadramento central.
+- Nome e preços válidos são obrigatórios. Nomes duplicados na mesma categoria são recusados, mesmo com diferenças de acento, espaços ou maiúsculas. Há um limite de 100 produtos na demo.
+- Fotos e novos sabores ficam no IndexedDB do mesmo navegador/origem, junto dos demais dados, e permanecem após recarregar. O JSON de exportação inclui as fotos otimizadas. Elas ainda não são enviadas aos aplicativos Android.
+- O snapshot permanece no schema 2, com foto opcional por produto. O IndexedDB passa à versão 3 para impedir que abas com código antigo descartem esse campo ao salvar. Os dados anteriores são preservados; **recarregue as abas do painel após atualizar o servidor**.
 
 ## Promoções
 

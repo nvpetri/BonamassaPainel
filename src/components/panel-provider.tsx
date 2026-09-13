@@ -28,11 +28,13 @@ interface PanelContextValue {
 }
 const Context = createContext<PanelContextValue | null>(null);
 const readableError = (error: unknown) =>
-  error instanceof ZodError
-    ? "Dados inválidos. Confira os campos e os valores informados."
-    : error instanceof Error
-      ? error.message
-      : "Não foi possível salvar a alteração.";
+  error instanceof DOMException && error.name === "QuotaExceededError"
+    ? "O armazenamento do navegador está cheio. A alteração não foi salva. Remova fotos que não utiliza ou libere espaço e tente novamente."
+    : error instanceof ZodError
+      ? "Dados inválidos. Confira os campos e os valores informados."
+      : error instanceof Error
+        ? error.message
+        : "Não foi possível salvar a alteração.";
 
 export function PanelProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State | null>(null);

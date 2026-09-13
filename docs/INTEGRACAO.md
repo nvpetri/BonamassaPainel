@@ -27,6 +27,8 @@ O servidor será responsável por estabelecimento, sessão, perfil, preços, dis
 | `PATCH /staff/drivers/{id}/availability`  | Administrar novas coletas                      | Gestor                                                       |
 | `GET /catalog`                            | Cardápio e regras publicáveis                  | Conforme contexto do app                                     |
 | `PATCH /staff/products/{id}`              | Editar preço/disponibilidade                   | Gestor                                                       |
+| `POST /staff/products`                    | Cadastrar sabor, preços e disponibilidade      | Gestor                                                       |
+| `POST /staff/product-images`              | Enviar e otimizar uma foto de produto          | Gestor                                                       |
 | `GET /staff/promotions`                   | Listar promoções, vigência e consumo           | Atendimento/gestor                                           |
 | `POST /staff/promotions`                  | Criar desconto e limites                       | Gestor                                                       |
 | `PATCH /staff/promotions/{id}`            | Editar ou pausar com versão esperada           | Gestor                                                       |
@@ -66,6 +68,14 @@ Idempotency-Key: <identificador único da tentativa lógica>
 O servidor deve, em uma transação, validar a sessão e o estabelecimento, conferir perfil e versão, aplicar a transição, gravar o evento e retornar o pedido atualizado. Repetir a mesma chave não deve duplicar a ação. Versão desatualizada deve retornar conflito (`409`) com indicação do estado atual para reconciliação.
 
 Itens de criação carregam referências de produto/sabor, tamanho, borda e quantidade. O servidor consulta o catálogo e calcula totais em centavos; os itens do pedido preservam o preço e a descrição contratados. Mudanças no catálogo não reprecificam pedidos já aceitos.
+
+## Cadastro e fotos na API
+
+A versão 0.3 adiciona `ADD_PRODUCT` e o campo opcional `Product.photo`. Na demo, esse campo contém a imagem otimizada como data URL local, incluída no snapshot e na exportação JSON. O original não é salvo. A atualização do produto e da foto acontece na mesma transação IndexedDB; cancelar a edição não grava a prévia. O banco local usa versão 3 para impedir escritas de abas antigas que removeriam campos desconhecidos, mantendo o snapshot no schema 2.
+
+Na API, substituir o data URL por uma referência de imagem em storage (por exemplo, R2/S3) e URL adequada à leitura do cardápio. O endpoint de upload deve autenticar o gestor, conferir loja, tamanho e conteúdo real, decodificar e otimizar no servidor. A validação e a compressão do navegador melhoram a experiência, mas não substituem as do servidor. Associar a nova imagem ao produto ao confirmar o cadastro, e tratar descarte de uploads abandonados e exclusão de imagens substituídas sem afetar pedidos existentes.
+
+O cadastro deve validar os preços em centavos e impedir nomes duplicados na mesma categoria/loja sob concorrência, seguindo a normalização acordada. Edição precisa de versão esperada, inclusive ao trocar foto ou disponibilidade. Produtos novos devem aparecer no catálogo dos apps após a confirmação da API. Fotos não devem ser copiadas para cada item do pedido, evento de produção ou notificação da cozinha.
 
 ## Promoções e reservas no servidor
 

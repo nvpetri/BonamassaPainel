@@ -1876,6 +1876,9 @@ small {
 .catalog-callout > .badge {
   margin-left: auto;
 }
+.catalog-heading {
+  margin-bottom: 18px;
+}
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1886,6 +1889,10 @@ small {
   border-radius: 11px;
   overflow: hidden;
   background: #211c16;
+}
+.product-body h3,
+.product-body p {
+  overflow-wrap: anywhere;
 }
 .product-art {
   height: 130px;
@@ -2029,6 +2036,150 @@ small {
 }
 .product-card.unavailable h3 {
   color: #c2b49d;
+}
+.product-art.has-photo:before,
+.product-art.has-photo:after {
+  display: none;
+}
+.product-art.has-photo > .badge.green {
+  background: #253821;
+  color: #c7e2bd;
+}
+.product-art.has-photo > .badge.neutral {
+  background: #292724;
+  color: #ded6ca;
+}
+.product-photo-image {
+  object-fit: cover;
+}
+.product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.product-form > .check-field,
+.product-form > .field-hint {
+  margin: 0;
+}
+.photo-editor {
+  padding: 16px;
+  border: 1px solid #57432d;
+  border-radius: 9px;
+  background: #241c13;
+  min-width: 0;
+}
+.photo-editor-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 13px;
+  font-size: 12px;
+  color: #eed4b0;
+}
+.photo-editor-heading > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+.photo-editor-heading > span:last-child {
+  color: #bca589;
+  font-size: 10px;
+}
+.photo-preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed #80643e;
+  border-radius: 7px;
+  background: #18130e;
+  overflow: hidden;
+  margin-bottom: 15px;
+}
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  text-align: center;
+  color: #c3a37b;
+}
+.photo-placeholder strong {
+  color: #e5c9a4;
+  font-size: 12px;
+}
+.photo-placeholder span {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.photo-file-control {
+  position: relative;
+  cursor: pointer;
+}
+.photo-file-control:focus-within {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.photo-file-control[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.photo-file-control input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.photo-file-hint {
+  margin: 12px 0 0;
+}
+.photo-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.photo-editor-actions > span {
+  font-size: 10px;
+  color: #bfcda9;
+  line-height: 1.7;
+}
+.photo-editor-actions > .button {
+  padding: 8px 0;
+  font-size: 11px;
+}
+.photo-processing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #f6e0bc;
+  background: #120e09df;
+  font-size: 12px;
+}
+.photo-processing .spin {
+  animation: photo-spin 0.9s linear infinite;
+}
+@keyframes photo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-processing .spin {
+    animation: none;
+  }
 }
 .settings-grid {
   display: grid;

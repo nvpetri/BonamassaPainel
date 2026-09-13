@@ -19,7 +19,8 @@ export interface PanelRepository {
 let database: Promise<IDBPDatabase<DemoDatabase>> | undefined;
 function db() {
   if (!database) {
-    database = openDB<DemoDatabase>("bonamassa-painel-demo", 2, {
+    // Older tabs discard unknown product fields. A new DB version prevents them from erasing photos.
+    database = openDB<DemoDatabase>("bonamassa-painel-demo", 3, {
       upgrade(database, oldVersion) {
         if (oldVersion < 1) database.createObjectStore("state");
       },

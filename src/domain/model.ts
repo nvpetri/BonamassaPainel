@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { catalogName, productPhotoSchema } from "./photos";
 import {
   discountPerPizza,
   promotionSchema,
@@ -40,6 +41,7 @@ export const productSchema = z.object({
   description: z.string().max(240),
   category: z.enum(["PIZZA", "DRINK"]),
   enabled: z.boolean(),
+  photo: productPhotoSchema.nullable().optional(),
   prices: z.object({
     SMALL: moneySchema.positive(),
     MEDIUM: moneySchema.positive(),
@@ -309,6 +311,7 @@ export type Command =
   | { type: "STORE"; open: boolean }
   | { type: "DRIVER"; id: string; available: boolean }
   | { type: "PRODUCT"; product: Product; previous?: Product }
+  | { type: "ADD_PRODUCT"; product: Product }
   | { type: "PROMOTION"; promotion: Promotion; expectedVersion: number | null }
   | { type: "SETTINGS"; targetMinutes: number; defaultFee: number };
 
@@ -728,6 +731,25 @@ export function applyCommand(
     const driver = state.drivers.find((d) => d.id === command.id);
     requireThat(driver, "Entregador não encontrado.");
     driver.available = command.available;
+  } else if (command.type === "ADD_PRODUCT") {
+    const product = productSchema.parse(command.product);
+    requireThat(
+      state.products.length < 100,
+      "Limite de 100 produtos nesta demonstração.",
+    );
+    requireThat(
+      !state.products.some((p) => p.id === product.id),
+      "Este produto já foi cadastrado. Confira o cardápio.",
+    );
+    requireThat(
+      !state.products.some(
+        (p) =>
+          p.category === product.category &&
+          catalogName(p.name) === catalogName(product.name),
+      ),
+      "Já existe um produto com esse nome nesta categoria. Edite o cadastro existente ou escolha outro nome.",
+    );
+    state.products.unshift(product);
   } else if (command.type === "PRODUCT") {
     const product = productSchema.parse(command.product);
     const index = state.products.findIndex((p) => p.id === product.id);
@@ -741,6 +763,15 @@ export function applyCommand(
     requireThat(
       product.category === state.products[index].category,
       "A categoria deste produto não pode ser alterada.",
+    );
+    requireThat(
+      !state.products.some(
+        (p) =>
+          p.id !== product.id &&
+          p.category === product.category &&
+          catalogName(p.name) === catalogName(product.name),
+      ),
+      "Já existe um produto com esse nome nesta categoria. Escolha outro nome.",
     );
     state.products[index] = product;
   } else if (command.type === "PROMOTION") {

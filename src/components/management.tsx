@@ -9,6 +9,7 @@ import {
   Info,
   Pencil,
   Pizza,
+  Plus,
   RotateCcw,
   Save,
   Search,
@@ -30,6 +31,7 @@ import {
   parseMoney,
 } from "./ui";
 import { CardAction } from "./order-detail";
+import { PhotoField, ProductPhoto } from "./product-photo";
 
 export function Deliveries({ onOpen }: { onOpen(id: string): void }) {
   const { state, now, busy, execute } = usePanel();
@@ -200,7 +202,7 @@ export function Catalog() {
   const { state, busy, execute } = usePanel();
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
-  const [editing, setEditing] = useState<Product | null>(null);
+  const [editing, setEditing] = useState<Product | null | undefined>(undefined);
   const products = state!.products.filter(
     (p) =>
       (tab === "all" || p.category === tab) &&
@@ -223,6 +225,26 @@ export function Catalog() {
         </div>
         <Badge tone="gold">Regra a validar</Badge>
       </div>
+      <div className="section-heading compact catalog-heading">
+        <div>
+          <h2>
+            Seu cardápio <span>{state!.products.length}</span>
+          </h2>
+          <p>Cadastre sabores e deixe cada produto com sua própria foto.</p>
+        </div>
+        <Button
+          tone="primary"
+          onClick={() => setEditing(null)}
+          disabled={busy || state!.products.length >= 100}
+        >
+          <Plus size={17} /> Novo sabor
+        </Button>
+      </div>
+      {state!.products.length >= 100 && (
+        <p className="field-hint">
+          Você atingiu o limite de 100 produtos desta demonstração.
+        </p>
+      )}
       <div className="board-toolbar">
         <div className="tabs">
           {[
@@ -256,22 +278,33 @@ export function Catalog() {
             className={`product-card ${product.enabled ? "" : "unavailable"}`}
             key={product.id}
           >
-            <div className={`product-art art-${index % 4}`}>
-              <div className="product-plate">
-                {product.category === "PIZZA" ? (
-                  <Pizza size={52} strokeWidth={1.2} />
-                ) : (
-                  <Wine size={44} strokeWidth={1.2} />
-                )}
-              </div>
+            <div
+              className={`product-art art-${index % 4} ${product.photo ? "has-photo" : ""}`}
+            >
+              {product.photo ? (
+                <ProductPhoto
+                  src={product.photo}
+                  alt={`Foto de ${product.name}`}
+                />
+              ) : (
+                <div className="product-plate">
+                  {product.category === "PIZZA" ? (
+                    <Pizza size={52} strokeWidth={1.2} />
+                  ) : (
+                    <Wine size={44} strokeWidth={1.2} />
+                  )}
+                </div>
+              )}
               <Badge tone={product.enabled ? "green" : "neutral"}>
                 {product.enabled ? "Disponível" : "Pausado"}
               </Badge>
-              <span className="art-caption">
-                {product.category === "PIZZA"
-                  ? "FEITA PARA COMPARTILHAR"
-                  : "PARA ACOMPANHAR"}
-              </span>
+              {!product.photo && (
+                <span className="art-caption">
+                  {product.category === "PIZZA"
+                    ? "FEITA PARA COMPARTILHAR"
+                    : "PARA ACOMPANHAR"}
+                </span>
+              )}
             </div>
             <div className="product-body">
               <div className="product-category">
@@ -339,11 +372,15 @@ export function Catalog() {
           description="Tente outro nome ou categoria."
         />
       )}
-      {editing && (
+      {editing !== undefined && (
         <EditProduct
-          key={editing.id}
+          key={editing?.id ?? "new-flavor"}
           product={editing}
-          onClose={() => setEditing(null)}
+          onClose={() => setEditing(undefined)}
+          onCreated={() => {
+            setQuery("");
+            setTab("PIZZA");
+          }}
         />
       )}
     </>
@@ -353,57 +390,92 @@ export function Catalog() {
 function EditProduct({
   product,
   onClose,
+  onCreated,
 }: {
-  product: Product;
+  product: Product | null;
   onClose(): void;
+  onCreated(): void;
 }) {
   const { execute, busy, notify } = usePanel();
-  const [name, setName] = useState(product.name);
-  const [description, setDescription] = useState(product.description);
+  const [name, setName] = useState(product?.name ?? "");
+  const [description, setDescription] = useState(product?.description ?? "");
+  const [photo, setPhoto] = useState(product?.photo ?? null);
+  const [photoPending, setPhotoPending] = useState(false);
+  const [enabled, setEnabled] = useState(product?.enabled ?? true);
+  const category = product?.category ?? "PIZZA";
   const [prices, setPrices] = useState({
-    SMALL: moneyText(product.prices.SMALL),
-    MEDIUM: moneyText(product.prices.MEDIUM),
-    LARGE: moneyText(product.prices.LARGE),
+    SMALL: product ? moneyText(product.prices.SMALL) : "",
+    MEDIUM: product ? moneyText(product.prices.MEDIUM) : "",
+    LARGE: product ? moneyText(product.prices.LARGE) : "",
   });
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy || photoPending) return;
+    if (!name.trim()) {
+      notify("Informe o nome do sabor.", true);
+      return;
+    }
     const parsed = Object.fromEntries(
       Object.entries(prices).map(([key, value]) => [key, parseMoney(value)]),
     ) as Product["prices"];
-    if (product.category === "DRINK")
-      parsed.SMALL = parsed.LARGE = parsed.MEDIUM;
+    if (category === "DRINK") parsed.SMALL = parsed.LARGE = parsed.MEDIUM;
     if (Object.values(parsed).some((p) => !Number.isFinite(p) || p <= 0)) {
       notify("Informe preços maiores que zero.", true);
       return;
     }
+    const saved: Product = {
+      id: product?.id ?? crypto.randomUUID(),
+      category,
+      enabled,
+      name: name.trim(),
+      description: description.trim(),
+      prices: parsed,
+      photo,
+    };
     if (
       await execute(
-        {
-          type: "PRODUCT",
-          previous: product,
-          product: { ...product, name, description, prices: parsed },
-        },
-        "Produto atualizado. Pedidos existentes mantêm seus preços.",
+        product
+          ? {
+              type: "PRODUCT",
+              previous: product,
+              product: saved,
+            }
+          : { type: "ADD_PRODUCT", product: saved },
+        product
+          ? "Produto atualizado. Pedidos existentes mantêm seus preços."
+          : enabled
+            ? "Novo sabor cadastrado! Ele já está disponível para novos pedidos."
+            : "Novo sabor cadastrado e pausado. Ative-o pelo cardápio quando quiser.",
       )
-    )
+    ) {
+      if (!product) onCreated();
       onClose();
+    }
   };
   return (
     <Modal
-      title="Editar produto"
+      title={product ? "Editar produto" : "Novo sabor"}
       subtitle="Alterações valem para novos pedidos desta demonstração."
       onClose={onClose}
     >
       <form onSubmit={submit}>
-        <div className="form-content">
+        <div className="form-content product-form">
           <Field label="Nome">
             <input
               required
+              autoFocus
               maxLength={80}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </Field>
+          <PhotoField
+            value={photo}
+            onChange={setPhoto}
+            pending={photoPending}
+            onPending={setPhotoPending}
+            disabled={busy}
+          />
           <Field label="Descrição">
             <textarea
               maxLength={240}
@@ -413,14 +485,14 @@ function EditProduct({
             />
           </Field>
           <div className="form-row">
-            {(product.category === "PIZZA"
+            {(category === "PIZZA"
               ? (["SMALL", "MEDIUM", "LARGE"] as const)
               : (["MEDIUM"] as const)
             ).map((size) => (
               <Field
                 key={size}
                 label={
-                  product.category === "DRINK"
+                  category === "DRINK"
                     ? "Preço por unidade"
                     : { SMALL: "Pequena", MEDIUM: "Média", LARGE: "Grande" }[
                         size
@@ -435,11 +507,30 @@ function EditProduct({
               </Field>
             ))}
           </div>
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />{" "}
+            Disponível para novos pedidos
+          </label>
+          <p className="field-hint">
+            Você pode cadastrar um sabor pausado e ativá-lo depois pelo
+            cardápio.
+          </p>
         </div>
         <footer className="modal-footer">
           <Button onClick={onClose}>Voltar</Button>
-          <Button tone="primary" type="submit" disabled={busy}>
-            <Save size={16} /> Salvar produto
+          <Button tone="primary" type="submit" disabled={busy || photoPending}>
+            <Save size={16} />{" "}
+            {photoPending
+              ? "Preparando foto…"
+              : busy
+                ? "Salvando…"
+                : product
+                  ? "Salvar produto"
+                  : "Cadastrar sabor"}
           </Button>
         </footer>
       </form>

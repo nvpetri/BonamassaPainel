@@ -29,7 +29,7 @@ export const viewInfo: Record<
   },
   cardapio: {
     title: "Cardápio",
-    subtitle: "Seus sabores, preços e disponibilidade em um só lugar.",
+    subtitle: "Seus sabores, fotos e preços em um só lugar.",
     section: "Gestão",
   },
   promocoes: {

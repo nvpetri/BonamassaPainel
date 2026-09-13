@@ -209,7 +209,7 @@ test("dados inválidos não são substituídos silenciosamente", async ({
   ).toBeVisible();
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open("bonamassa-painel-demo", 2);
+      const request = indexedDB.open("bonamassa-painel-demo", 3);
       request.onsuccess = () => {
         const database = request.result;
         const tx = database.transaction("state", "readwrite");

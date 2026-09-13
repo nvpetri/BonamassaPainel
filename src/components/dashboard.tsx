@@ -784,7 +784,7 @@ export function Dashboard({ view }: { view: View }) {
               <span className="dot" /> Dados de exemplo · salvos neste navegador
             </span>
             <span>
-              Bonamassa Painel <b>v0.2</b>
+              Bonamassa Painel <b>v0.3</b>
             </span>
           </footer>
         </main>
