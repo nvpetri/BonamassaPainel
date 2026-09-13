@@ -310,7 +310,9 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
       .selectOption({ label: "Equipe Entrega" });
     await d.getByRole("button", { name: "Confirmar", exact: true }).click();
     await expect(
-      d.getByText("Entregador atribuído", { exact: true }),
+      d
+        .locator(".detail-status")
+        .getByText("Entregador atribuído", { exact: true }),
     ).toBeVisible();
     await expect(d.getByRole("button", { name: /Simular/ })).toHaveCount(0);
     let current = await (

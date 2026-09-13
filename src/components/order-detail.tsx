@@ -368,7 +368,8 @@ export function OrderDetail({
           </ol>
         </div>
         <p className="print-disclaimer">
-          Demonstração Bonamassa · Comanda sem valor fiscal
+          {api ? "Bonamassa Pizzaria" : "Demonstração Bonamassa"} · Comanda sem
+          valor fiscal
         </p>
       </div>
       <div className="detail-controls no-print">
