@@ -1,5 +1,6 @@
 "use client";
 
+import { storeDate } from "@/domain/schedule";
 import {
   cloneElement,
   isValidElement,
@@ -53,6 +54,7 @@ export function Badge({
 }
 export const statusTone = (status: Status) =>
   ({
+    SCHEDULED: "blue",
     NEW: "red",
     CONFIRMED: "gold",
     PREPARING: "gold",
@@ -250,7 +252,7 @@ export function OrderCard({
   kitchen?: boolean;
 }) {
   const minutes = minutesWaiting(order, now);
-  const late = minutes >= target;
+  const late = order.status !== "SCHEDULED" && minutes >= target;
   return (
     <article
       className={`order-card ${late ? "late" : ""} ${kitchen ? "kitchen-card" : ""}`}
@@ -268,10 +270,13 @@ export function OrderCard({
         </button>
         <span className={`elapsed ${late ? "late" : ""}`}>
           <Clock3 size={12} />
-          {minutes} min
+          {order.status === "SCHEDULED" ? "Reserva" : `${minutes} min`}
         </span>
       </div>
       <div className="card-customer">{order.customer}</div>
+      {order.scheduledFor && order.status === "SCHEDULED" && <p className="field-hint">
+        Agendado para {storeDate(order.scheduledFor)} · Horário de São Paulo
+      </p>}
       <div className="order-meta">
         <span>
           {order.mode === "DELIVERY" ? (

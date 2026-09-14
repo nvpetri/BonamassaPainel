@@ -181,7 +181,10 @@ export function ApiPanelProvider({ children }: { children: ReactNode }) {
     }
     const revision = ++generation.current;
     try {
-      const jobs = await Promise.all(active.map((status) => pages(status)));
+      const scheduleCatalog = user.role === "KITCHEN" ? null :
+        catalogSchema.parse(await get("staff/catalog"));
+      const statuses = scheduleCatalog?.store.scheduleEnabled ? ["SCHEDULED", ...active] : active;
+      const jobs = await Promise.all(statuses.map((status) => pages(status)));
       const isKitchen = user.role === "KITCHEN";
       const history = isKitchen
         ? { all: [], hasMore: false }
@@ -204,7 +207,7 @@ export function ApiPanelProvider({ children }: { children: ReactNode }) {
         await Promise.all([
           isKitchen
             ? null
-            : get("staff/catalog").then((r) => catalogSchema.parse(r)),
+            : scheduleCatalog,
           isKitchen
             ? []
             : get("staff/drivers").then((r) => z.array(driverDto).parse(r)),

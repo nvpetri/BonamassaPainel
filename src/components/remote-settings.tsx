@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Plus, Save, Users } from "lucide-react";
 import { randomId } from "@/data/api-client";
 import { type ApiStore } from "@/data/api-contract";
+import { needsEarlyConfirmation, storeDate } from "@/domain/schedule";
 import { usePanel } from "./panel-provider";
 import {
   Badge,
@@ -25,6 +26,7 @@ export function RemoteSettings() {
   const { api, busy } = usePanel();
   const [editing, setEditing] = useState<ApiStore | null>(null);
   const [creating, setCreating] = useState(false);
+  const [hours, setHours] = useState(false);
   const store = api!.catalog!.store;
   return (
     <>
@@ -35,7 +37,7 @@ export function RemoteSettings() {
           <p>Taxa de entrega: R$ {moneyText(store.deliveryFee)}</p>
           <p>Repasse por entrega: R$ {moneyText(store.driverFee)}</p>
           <Badge tone={store.open ? "green" : "red"}>
-            {store.open ? "Recebendo pedidos" : "Novos pedidos pausados"}
+            {store.open ? "Recebendo pedidos" : store.reservationsAvailable ? "Recebendo reservas" : "Novos pedidos pausados"}
           </Badge>
           <p className="field-hint">
             Alterações de preço valem para os próximos pedidos. O alerta visual
@@ -44,6 +46,24 @@ export function RemoteSettings() {
           <Button onClick={() => setEditing(store)} disabled={busy}>
             Editar operação
           </Button>
+        </section>
+        <section className="settings-card">
+          <h2>Horário de funcionamento</h2>
+          <p>Todos os dias, das {store.opensAt} às {store.closesAt}
+            {store.closesAt < store.opensAt ? " do dia seguinte" : ""}.</p>
+          <p>Fuso: São Paulo (America/Sao_Paulo).</p>
+          <Badge tone={store.scheduleEnabled ? "green" : "gold"}>
+            {store.scheduleEnabled ? "Abertura e fechamento automáticos" : "Programação ainda desativada"}
+          </Badge>
+          <p className="field-hint">Fora do expediente, os pedidos ficam agendados para a próxima abertura.
+            O horário indica a entrada na fila, não uma promessa de entrega às {store.opensAt}.</p>
+          {store.overrideUntil && <p>Operação manual até {storeDate(store.overrideUntil)}.
+            Depois, o horário automático volta a valer.</p>}
+          <Button disabled={busy} onClick={() => setHours(true)}>Configurar horários</Button>
+          {store.overrideUntil && <Button disabled={busy} onClick={() => void api!.run("staff/store", {
+            expectedVersion: store.version, name: store.name,
+            deliveryFee: store.deliveryFee, driverFee: store.driverFee, resumeSchedule: true,
+          }, "Programação automática retomada.", "PATCH")}>Retomar programação</Button>}
         </section>
         <section className="settings-card">
           <h2>Conexão</h2>
@@ -108,6 +128,7 @@ export function RemoteSettings() {
       {editing && (
         <StoreEditor initial={editing} onClose={() => setEditing(null)} />
       )}
+      {hours && <ScheduleEditor initial={store} onClose={() => setHours(false)} />}
       {creating && <UserEditor onClose={() => setCreating(false)} />}
     </>
   );
@@ -123,7 +144,6 @@ function StoreEditor({
   const [name, setName] = useState(initial.name),
     [fee, setFee] = useState(moneyText(initial.deliveryFee)),
     [driverFee, setDriverFee] = useState(moneyText(initial.driverFee));
-  const [open, setOpen] = useState(initial.open);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const deliveryFee = parseMoney(fee),
@@ -132,7 +152,7 @@ function StoreEditor({
       !Number.isFinite(deliveryFee) ||
       !Number.isFinite(repass) ||
       deliveryFee > 10000 ||
-      repass > 100000
+      repass > 10000
     ) {
       notify("Confira as taxas. Informe valores válidos em reais.", true);
       return;
@@ -144,7 +164,6 @@ function StoreEditor({
           {
             expectedVersion: initial.version,
             name,
-            open,
             deliveryFee,
             driverFee: repass,
           },
@@ -175,14 +194,8 @@ function StoreEditor({
               <MoneyInput required value={driverFee} onChange={setDriverFee} />
             </Field>
           </div>
-          <label className="check-line">
-            <input
-              type="checkbox"
-              checked={open}
-              onChange={(e) => setOpen(e.target.checked)}
-            />{" "}
-            Receber novos pedidos
-          </label>
+          <p className="field-hint">Use o botão da loja na tela de pedidos para abrir ou fechar manualmente.
+            A programação diária fica em Configurar horários.</p>
         </div>
         <footer className="modal-footer">
           <Button onClick={onClose}>Voltar</Button>
@@ -304,4 +317,75 @@ function UserEditor({ onClose }: { onClose(): void }) {
       </form>
     </Modal>
   );
+}
+
+export function StoreControl() {
+  const { api, busy } = usePanel();
+  const [confirm, setConfirm] = useState<ApiStore | null>(null);
+  const store = api!.catalog!.store;
+  const change = async (snapshot: ApiStore, early = false) => {
+    const result = await api!.run("staff/store", {
+      expectedVersion: snapshot.version, name: snapshot.name,
+      deliveryFee: snapshot.deliveryFee, driverFee: snapshot.driverFee,
+      open: !snapshot.open, ...(early ? { confirmEarlyOpen: true } : {}),
+    }, snapshot.open ? "Loja fechada; reservas seguem disponíveis no horário automático." : "Loja aberta para atendimento.", "PATCH");
+    if (result.ok) setConfirm(null);
+  };
+  return <>
+    <button className={`store-toggle ${store.open ? "online" : "offline"}`} disabled={busy}
+      onClick={() => needsEarlyConfirmation(store) ? setConfirm(store) : void change(store)}>
+      <span className="dot" />{store.open ? "Loja aberta" : "Loja pausada"}
+    </button>
+    {confirm && <Modal title="Abrir fora do horário programado?" onClose={() => setConfirm(null)}>
+      <div className="form-content">
+        <p>A abertura está programada para {confirm.opensAt}, no horário de São Paulo.
+          Deseja realmente abrir a loja agora?</p>
+        <p>As reservas da próxima abertura serão liberadas para o atendimento.
+          A cozinha ainda precisará aceitar e preparar cada pedido.</p>
+        <p>A abertura manual é temporária; depois a programação automática volta a valer.</p>
+      </div>
+      <footer className="modal-footer">
+        <Button disabled={busy} onClick={() => setConfirm(null)}>Manter fechada</Button>
+        <Button tone="success" disabled={busy} onClick={() => void change(confirm, true)}>Sim, abrir agora</Button>
+      </footer>
+    </Modal>}
+  </>;
+}
+function ScheduleEditor({ initial, onClose }: { initial: ApiStore; onClose(): void }) {
+  const { api, busy, notify } = usePanel();
+  const [opensAt, setOpensAt] = useState(initial.opensAt);
+  const [closesAt, setClosesAt] = useState(initial.closesAt);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (opensAt === closesAt) {
+      notify("A abertura e o fechamento devem ter horários diferentes.", true);
+      return;
+    }
+    const result = await api!.run("staff/store", {
+      expectedVersion: initial.version, name: initial.name,
+      deliveryFee: initial.deliveryFee, driverFee: initial.driverFee,
+      scheduleEnabled: true, opensAt, closesAt,
+    }, "Horários automáticos atualizados.", "PATCH");
+    if (result.ok) onClose();
+  };
+  return <Modal title="Horário de funcionamento" onClose={onClose}>
+    <form onSubmit={submit}>
+      <div className="form-content">
+        <div className="form-row">
+          <Field label="Abertura"><input type="time" required value={opensAt} onChange={(e) => setOpensAt(e.target.value)} /></Field>
+          <Field label="Fechamento"><input type="time" required value={closesAt} onChange={(e) => setClosesAt(e.target.value)} /></Field>
+        </div>
+        <p>Todos os dias · Horário de São Paulo.</p>
+        <p>{closesAt < opensAt ? "O fechamento acontece no dia seguinte à abertura." : "Abertura e fechamento no mesmo dia."}</p>
+        <p>Fora desse período, os clientes podem reservar para a próxima abertura.
+          Pedidos em andamento continuam normalmente após o fechamento.</p>
+        <p className="field-hint">Não é possível alterar o horário enquanto houver reservas pendentes.
+          Salvar uma nova programação encerra a abertura ou pausa manual atual.</p>
+      </div>
+      <footer className="modal-footer">
+        <Button onClick={onClose}>Voltar</Button>
+        <Button type="submit" tone="primary" disabled={busy}>Salvar horários</Button>
+      </footer>
+    </form>
+  </Modal>;
 }

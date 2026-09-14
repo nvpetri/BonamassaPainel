@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { z } from "zod";
 import { Check, Trash2 } from "lucide-react";
 import { brl } from "@/domain/model";
+import { storeDate } from "@/domain/schedule";
 import { priceItems, type ItemDraft } from "@/domain/catalog";
 import {
   addressSchema,
@@ -96,6 +97,7 @@ export function RemoteNewOrder({
         payment,
         cashTendered: tendered,
         promotionId: promotionId || null,
+        ...(api!.catalog!.store.reservationsAvailable ? { allowScheduling: true } : {}),
       },
       "Valores conferidos pela pizzaria. Revise e confirme o pedido.",
     );
@@ -116,7 +118,7 @@ export function RemoteNewOrder({
     const result = await api!.run(
       "staff/orders",
       { quoteId: quote.quoteId },
-      "Pedido recebido pela pizzaria.",
+      quote.scheduledFor ? "Reserva agendada pela pizzaria." : "Pedido recebido pela pizzaria.",
     );
     if (result.ok) onClose();
     else {
@@ -156,6 +158,10 @@ export function RemoteNewOrder({
                     : "Dinheiro · valor exato"}
               </p>
             </div>
+            {quote.scheduledFor && <div className="remote-alert" role="status">
+              <strong>Reserva para {storeDate(quote.scheduledFor)} · São Paulo</strong>
+              <p>O pedido entrará no atendimento na abertura. Este não é o horário de entrega.</p>
+            </div>}
             {quote.items.map((item) => (
               <div key={item.id} className="review-line">
                 <div>
@@ -223,7 +229,7 @@ export function RemoteNewOrder({
               disabled={busy || now >= quote.expiresAt}
               onClick={() => void confirm()}
             >
-              <Check size={17} /> Confirmar pedido
+              <Check size={17} /> {quote.scheduledFor ? "Confirmar reserva" : "Confirmar pedido"}
             </Button>
           </footer>
         </>

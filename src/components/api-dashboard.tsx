@@ -29,7 +29,8 @@ import { Catalog } from "./catalog";
 import { Promotions } from "./promotions";
 import { Deliveries } from "./management";
 import { NewOrder } from "./new-order";
-import { RemoteSettings, roleLabels } from "./remote-settings";
+import { RemoteSettings, StoreControl, roleLabels } from "./remote-settings";
+import { storeDate } from "@/domain/schedule";
 import { ItemComponents } from "./order-components";
 
 const nav = [
@@ -42,7 +43,7 @@ const nav = [
   { view: "configuracoes", icon: Settings },
 ] as const;
 export function ApiDashboard({ view: requested }: { view: View }) {
-  const { api, state, busy, now, toast, reload, execute, sound, toggleSound } =
+  const { api, state, busy, now, toast, reload, sound, toggleSound } =
     usePanel();
   const [menu, setMenu] = useState(false),
     [creating, setCreating] = useState(false);
@@ -226,33 +227,26 @@ export function ApiDashboard({ view: requested }: { view: View }) {
             </div>
             <div className="page-actions">
               {view === "pedidos" && role === "MANAGER" && state && (
-                <button
-                  className={`store-toggle ${state.storeOpen ? "online" : "offline"}`}
-                  disabled={busy}
-                  onClick={() =>
-                    void execute(
-                      { type: "STORE", open: !state.storeOpen },
-                      state.storeOpen
-                        ? "Novos pedidos pausados."
-                        : "Pizzaria recebendo pedidos.",
-                    )
-                  }
-                >
-                  <span className="dot" />
-                  {state.storeOpen ? "Loja aberta" : "Loja pausada"}
-                </button>
+                <StoreControl />
               )}
               {view === "pedidos" && (
                 <Button
                   tone="primary"
-                  disabled={busy || !state?.storeOpen}
+                  disabled={busy || (!state?.storeOpen && !api.catalog?.store.reservationsAvailable)}
                   onClick={() => setCreating(true)}
                 >
-                  <Plus size={18} /> Novo pedido
+                  <Plus size={18} /> {state?.storeOpen ? "Novo pedido" : "Nova reserva"}
                 </Button>
               )}
             </div>
           </div>
+          {view === "pedidos" && api.catalog?.store.reservationsAvailable && !api.catalog.store.open && (
+            <div className="remote-alert" role="status">
+              <strong>Loja fechada · Reservas abertas</strong>
+              <p>Novos pedidos ficam agendados para {api.catalog.store.nextOpening ? storeDate(api.catalog.store.nextOpening) : api.catalog.store.opensAt},
+                no horário de São Paulo. Eles só entram na operação quando a loja abrir.</p>
+            </div>
+          )}
           {api.stale && (
             <div className="remote-alert" role="alert">
               <strong>Os dados podem estar desatualizados.</strong>
@@ -291,6 +285,7 @@ export function ApiDashboard({ view: requested }: { view: View }) {
                   {view === "pedidos" && (
                     <div className="remote-metrics">
                       {[
+                        ["Agendados", active.filter((o) => o.status === "SCHEDULED").length],
                         [
                           "Novos",
                           active.filter((o) => o.status === "NEW").length,
@@ -550,14 +545,14 @@ function Kitchen() {
             {list.length ? (
               list.map((order) => (
                 <article
-                  className={`order-card kitchen-card ${now - order.createdAt >= 45 * 60000 ? "late" : ""}`}
+                  className={`order-card kitchen-card ${now - (order.queuedAt ?? order.createdAt) >= 45 * 60000 ? "late" : ""}`}
                   key={order.id}
                   data-testid={`kitchen-${order.number}`}
                 >
                   <div className="card-heading">
                     <strong className="order-number">#{order.number}</strong>
                     <span className="elapsed">
-                      {Math.max(0, Math.floor((now - order.createdAt) / 60000))}{" "}
+                      {Math.max(0, Math.floor((now - (order.queuedAt ?? order.createdAt)) / 60000))}{" "}
                       min
                     </span>
                   </div>

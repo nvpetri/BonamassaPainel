@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { storeDate } from "@/domain/schedule";
 import {
   ArrowRight,
   Check,
@@ -166,7 +167,7 @@ export function OrderDetail({
   const stale = intent && intent.version !== order.version;
   const cancellable =
     (!api || api.user?.role === "MANAGER") &&
-    ["NEW", "CONFIRMED", "PREPARING", "READY"].includes(order.status) &&
+    ["SCHEDULED", "NEW", "CONFIRMED", "PREPARING", "READY"].includes(order.status) &&
     order.deliveryStatus !== "COLLECTED";
   const begin = (action: OrderAction) => {
     setIntent({ action, version: order.version });
@@ -208,7 +209,10 @@ export function OrderDetail({
     >
       <div className="detail-content printable">
         <div className="detail-status">
-          <StatusBadge order={order} />
+          <StatusBadge order={order} />{order.scheduledFor && <p className="field-hint">
+              {order.status === "SCHEDULED" ? "Agendado para" : "Reserva original"} {storeDate(order.scheduledFor)} · São Paulo.
+              {order.status === "SCHEDULED" ? " Aguarda abertura da loja; ainda não está em preparo." : ""}
+            </p>}
           <Badge>
             {order.mode === "DELIVERY" ? "Entrega" : "Retirada no balcão"}
           </Badge>
