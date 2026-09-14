@@ -236,6 +236,8 @@ export function OrderDetail({
           {order.mode === "DELIVERY" && (
             <>
               <p>{order.address}</p>
+              {order.complement && <p>Complemento: {order.complement}</p>}
+              {order.noComplement && <p className="muted">Sem complemento</p>}
               {order.reference && <p className="muted">{order.reference}</p>}
               <div className="detail-inline-actions no-print">
                 <Button tone="ghost" onClick={openRoute}>

@@ -5,6 +5,7 @@ import {
   randomBytes,
 } from "node:crypto";
 import { z } from "zod";
+import { isHardened, productionSettings } from "../../scripts/production-config.mjs";
 
 export const COOKIE = "bonamassa_panel";
 export const panelRole = z.enum(["MANAGER", "ATTENDANT", "KITCHEN"]);
@@ -15,6 +16,7 @@ const sessionSchema = z.object({
 });
 
 export function config() {
+  if (isHardened()) productionSettings();
   const api = new URL(process.env.API_URL || "http://127.0.0.1:3001");
   if (
     !/^https?:$/.test(api.protocol) ||
@@ -28,7 +30,7 @@ export function config() {
       "API_URL deve conter somente a origem da API, como http://127.0.0.1:3001.",
     );
   const slug = process.env.STORE_SLUG || "bonamassa";
-  if (!/^[a-z0-9-]{1,80}$/.test(slug)) throw new Error("STORE_SLUG inválido.");
+  if (!/^[a-z0-9-]{1,60}$/.test(slug)) throw new Error("STORE_SLUG inválido.");
   const secret = process.env.SESSION_SECRET || "";
   if (secret.length < 32)
     throw new Error(
@@ -111,6 +113,10 @@ export function sameOrigin(request: Request) {
   const host = request.headers.get("host");
   if (!origin || origin === "null" || !host) return false;
   try {
+    if (isHardened()) {
+      const expected = productionSettings().origin;
+      return origin === expected && host === new URL(expected).host && request.headers.get("sec-fetch-site") !== "cross-site";
+    }
     return (
       new URL(origin).host === host &&
       /^https?:$/.test(new URL(origin).protocol) &&

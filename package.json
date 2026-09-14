@@ -16,7 +16,10 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "setup": "node scripts/setup.mjs",
-    "test:api": "playwright test --config playwright.api.config.ts"
+    "test:api": "playwright test --config playwright.api.config.ts",
+    "production:check": "node --env-file-if-exists=.env.local scripts/check-production.mjs",
+    "start:production": "npm run production:check && next start --hostname 0.0.0.0",
+    "audit:production": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "5.3.0",

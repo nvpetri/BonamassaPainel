@@ -120,6 +120,8 @@ export const addressSchema = z.object({
   state: z.string().regex(/^[A-Z]{2}$/),
   postalCode: z.string().regex(/^\d{8}$/),
   reference: z.string().trim().max(240),
+  complement: z.string().trim().max(240).optional(),
+  noComplement: z.boolean().optional(),
 });
 export const apiOrderSchema = kitchenOrderSchema.extend({
   items: z.array(itemSchema),
@@ -186,6 +188,8 @@ export function mapOrder(o: ApiOrder): Order {
       ? `${address.street}, ${address.number} · ${address.neighborhood} · ${address.city}/${address.state} · CEP ${address.postalCode}`
       : "",
     reference: address?.reference ?? "",
+    complement: address?.complement ?? "",
+    noComplement: address?.noComplement ?? false,
     cashTendered: o.cashTendered ?? o.total,
     paymentCollected: o.paymentRecorded,
     recipient: o.recipient ?? "",
