@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, "codex/horarios-e-reservas"]
 
 permissions:
   contents: read
@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      APP_ENV: test
       PANEL_MODE: demo
     steps:
       - uses: actions/checkout@v7
@@ -29,6 +30,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm run audit:production
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -58,6 +60,7 @@ jobs:
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      APP_ENV: test
       DATABASE_URL: postgresql://bonamassa:ci-only-password@localhost:5432/bonamassa_panel_test
       SEED_STORE_SLUG: bonamassa
       SEED_MANAGER_EMAIL: manager@teste.example
