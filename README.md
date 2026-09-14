@@ -94,3 +94,7 @@ Use um banco **exclusivo para testes**: esses cenários criam contas e pedidos. 
 Para execução otimizada: `npm run build` e `npm start`. Mantenha os arquivos de ambiente apenas no servidor.
 
 Veja [o contrato da integração](docs/INTEGRACAO.md) e [o registro de verificação](docs/VERIFICACAO.md).
+
+## Preparação para produção
+
+Antes de publicar as mudanças, leia o [guia de produção do painel](docs/PRODUCAO.md). Inclui novas variáveis obrigatórias, separação de ambientes, deploy sem seed permanente, backup/restore e critérios de liberação. Não mesclar em branch com auto-deploy antes de revisar a configuração.

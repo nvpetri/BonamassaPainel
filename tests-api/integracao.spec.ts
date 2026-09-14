@@ -485,6 +485,61 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
     ).toBeVisible();
     await expect(card).not.toHaveClass(/late/);
   });
+  await test.step("complemento do aplicativo chega ao detalhe sem apagar referência", async () => {
+    for (const complement of ["Bloco A, apto 12", ""]) {
+      const quote = await command(request, bearer, "orders/quote", {
+        items: [
+          {
+            kind: "PIZZA",
+            flavorIds: ["calabresa"],
+            size: "LARGE",
+            crust: "NONE",
+            quantity: 1,
+            note: "",
+          },
+        ],
+        mode: "DELIVERY",
+        address: {
+          street: "Rua de Teste",
+          number: "10",
+          neighborhood: "Centro",
+          city: "São Paulo",
+          state: "SP",
+          postalCode: "01001000",
+          reference: "Portão azul",
+          complement,
+          noComplement: !complement,
+        },
+        customer: { name: "Cliente Complemento", phone: "11999999999" },
+        channel: "WHATSAPP",
+        payment: "CARD",
+        cashTendered: null,
+        note: "",
+        promotionId: null,
+      });
+      const created = await command(request, bearer, "staff/orders", {
+        quoteId: quote.quoteId,
+      });
+      await page.goto("/pedidos");
+      await page
+        .getByRole("button", {
+          name: `Ver pedido ${created.number}`,
+          exact: true,
+        })
+        .click();
+      const detail = page.getByRole("dialog");
+      await expect(
+        detail.getByText(
+          complement ? `Complemento: ${complement}` : "Sem complemento",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        detail.getByText("Portão azul", { exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+    }
+  });
   await page.screenshot({
     path: "test-results/painel-api.png",
     fullPage: true,

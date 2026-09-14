@@ -4,6 +4,8 @@ import {
   kitchenOrderSchema,
   mapState,
   versions,
+  apiOrderSchema,
+  mapOrder,
 } from "./api-contract";
 import { promotionUsage } from "../domain/promotions";
 
@@ -22,6 +24,61 @@ const base = {
   serverTime: "2026-09-13T12:00:00.000Z",
 };
 describe("contratos da API", () => {
+  it("preserva complemento e referência separados e aceita endereços anteriores", () => {
+    const address = {
+      street: "Rua",
+      number: "10",
+      neighborhood: "Centro",
+      city: "São Paulo",
+      state: "SP",
+      postalCode: "01001000",
+      reference: "Portão azul",
+    };
+    const raw = {
+      id: "order",
+      number: 1001,
+      version: 1,
+      status: "NEW",
+      deliveryStatus: null,
+      mode: "DELIVERY",
+      note: "",
+      createdAt: base.serverTime,
+      updatedAt: base.serverTime,
+      events: [],
+      items: [],
+      customer: { name: "Cliente", phone: "11999999999" },
+      address,
+      channel: "APP",
+      driverId: null,
+      payment: "CARD",
+      paymentRecorded: false,
+      cashTendered: null,
+      subtotal: 5500,
+      fee: 700,
+      discount: 0,
+      total: 6200,
+      recipient: null,
+      promotion: null,
+    };
+    const previous = mapOrder(apiOrderSchema.parse(raw));
+    expect(previous.reference).toBe("Portão azul");
+    expect(previous.complement).toBe("");
+    const current = mapOrder(
+      apiOrderSchema.parse({
+        ...raw,
+        address: { ...address, complement: "Apto 12", noComplement: false },
+      }),
+    );
+    expect(current.complement).toBe("Apto 12");
+    expect(current.reference).toBe("Portão azul");
+    const absent = mapOrder(
+      apiOrderSchema.parse({
+        ...raw,
+        address: { ...address, noComplement: true },
+      }),
+    );
+    expect(absent.noComplement).toBe(true);
+  });
   it("aceita operação vazia sem inserir dados demonstrativos", () => {
     const state = mapState(catalogSchema.parse(base), [], [], 1);
     expect(state.products).toEqual([]);

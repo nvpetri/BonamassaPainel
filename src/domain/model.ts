@@ -78,6 +78,8 @@ export const orderSchema = z
     mode: z.enum(["DELIVERY", "PICKUP"]),
     address: z.string().max(240),
     reference: z.string().max(240),
+    complement: z.string().max(240).optional(),
+    noComplement: z.boolean().optional(),
     note: z.string().max(240),
     status: statusSchema,
     scheduledFor: z.number().nullable().optional(),
