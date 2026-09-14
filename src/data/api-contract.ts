@@ -32,6 +32,15 @@ export const storeSchema = z.object({
   slug: z.string(),
   name: z.string(),
   open: z.boolean(),
+  scheduleEnabled: z.boolean().default(false),
+  opensAt: z.string().default("17:00"),
+  closesAt: z.string().default("03:00"),
+  timeZone: z.string().default("America/Sao_Paulo"),
+  scheduledOpen: z.boolean().default(false),
+  reservationsAvailable: z.boolean().default(false),
+  nextOpening: date.nullable().optional().default(null),
+  overrideOpen: z.boolean().nullable().optional().default(null),
+  overrideUntil: date.nullable().optional().default(null),
   deliveryFee: moneySchema,
   driverFee: moneySchema,
   version: z.number().int(),
@@ -85,6 +94,8 @@ export const kitchenOrderSchema = z.object({
   number: z.number().int(),
   version: z.number().int(),
   status: statusSchema,
+  scheduledFor: date.nullable().optional().default(null),
+  queuedAt: date.nullable().optional().default(null),
   deliveryStatus: deliveryStatusSchema.nullable(),
   mode: z.enum(["DELIVERY", "PICKUP"]),
   note: z.string(),
@@ -131,6 +142,7 @@ export const apiOrderSchema = kitchenOrderSchema.extend({
 export type ApiOrder = z.infer<typeof apiOrderSchema>;
 export const quoteResponseSchema = z.object({
   quoteId: z.string(),
+  scheduledFor: date.nullable().optional().default(null),
   expiresAt: date,
   items: z.array(itemSchema),
   subtotal: moneySchema,
@@ -149,6 +161,8 @@ export const versions = new WeakMap<
 >();
 const labels: Record<string, string> = {
   CREATED: "Pedido recebido",
+  SCHEDULED: "Reserva agendada",
+  SCHEDULE_RELEASED: "Reserva liberada para atendimento",
   ACCEPT: "Pedido aceito",
   PREPARE: "Preparo iniciado",
   READY: "Pedido pronto",

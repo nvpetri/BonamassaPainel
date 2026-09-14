@@ -34,6 +34,7 @@ import {
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 export const statusSchema = z.enum([
+  "SCHEDULED",
   "NEW",
   "CONFIRMED",
   "PREPARING",
@@ -79,6 +80,8 @@ export const orderSchema = z
     reference: z.string().max(240),
     note: z.string().max(240),
     status: statusSchema,
+    scheduledFor: z.number().nullable().optional(),
+    queuedAt: z.number().nullable().optional(),
     deliveryStatus: deliveryStatusSchema.nullable(),
     driverId: z.string().nullable(),
     items: z.array(itemSchema).min(1).max(30),
@@ -312,6 +315,7 @@ export type Command =
   | { type: "SETTINGS"; targetMinutes: number; defaultFee: number };
 
 export const statusLabels: Record<Status, string> = {
+  SCHEDULED: "Agendado",
   NEW: "Novo",
   CONFIRMED: "A preparar",
   PREPARING: "Em preparo",
@@ -342,7 +346,12 @@ export const brl = (cents: number) =>
     cents / 100,
   );
 export const minutesWaiting = (order: Order, now: number) =>
-  Math.max(0, Math.floor((now - order.createdAt) / 60_000));
+  order.status === "SCHEDULED"
+    ? 0
+    : Math.max(
+        0,
+        Math.floor((now - (order.queuedAt ?? order.createdAt)) / 60_000),
+      );
 
 const requireThat: (ok: unknown, message: string) => asserts ok = (
   ok,
