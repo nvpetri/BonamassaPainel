@@ -232,21 +232,34 @@ export function ApiDashboard({ view: requested }: { view: View }) {
               {view === "pedidos" && (
                 <Button
                   tone="primary"
-                  disabled={busy || (!state?.storeOpen && !api.catalog?.store.reservationsAvailable)}
+                  disabled={
+                    busy ||
+                    (!state?.storeOpen &&
+                      !api.catalog?.store.reservationsAvailable)
+                  }
                   onClick={() => setCreating(true)}
                 >
-                  <Plus size={18} /> {state?.storeOpen ? "Novo pedido" : "Nova reserva"}
+                  <Plus size={18} />{" "}
+                  {state?.storeOpen ? "Novo pedido" : "Nova reserva"}
                 </Button>
               )}
             </div>
           </div>
-          {view === "pedidos" && api.catalog?.store.reservationsAvailable && !api.catalog.store.open && (
-            <div className="remote-alert" role="status">
-              <strong>Loja fechada · Reservas abertas</strong>
-              <p>Novos pedidos ficam agendados para {api.catalog.store.nextOpening ? storeDate(api.catalog.store.nextOpening) : api.catalog.store.opensAt},
-                no horário de São Paulo. Eles só entram na operação quando a loja abrir.</p>
-            </div>
-          )}
+          {view === "pedidos" &&
+            api.catalog?.store.reservationsAvailable &&
+            !api.catalog.store.open && (
+              <div className="remote-alert" role="status">
+                <strong>Loja fechada · Reservas abertas</strong>
+                <p>
+                  Novos pedidos ficam agendados para{" "}
+                  {api.catalog.store.nextOpening
+                    ? storeDate(api.catalog.store.nextOpening)
+                    : api.catalog.store.opensAt}
+                  , no horário de São Paulo. Eles só entram na operação quando a
+                  loja abrir.
+                </p>
+              </div>
+            )}
           {api.stale && (
             <div className="remote-alert" role="alert">
               <strong>Os dados podem estar desatualizados.</strong>
@@ -285,7 +298,10 @@ export function ApiDashboard({ view: requested }: { view: View }) {
                   {view === "pedidos" && (
                     <div className="remote-metrics">
                       {[
-                        ["Agendados", active.filter((o) => o.status === "SCHEDULED").length],
+                        [
+                          "Agendados",
+                          active.filter((o) => o.status === "SCHEDULED").length,
+                        ],
                         [
                           "Novos",
                           active.filter((o) => o.status === "NEW").length,
@@ -552,7 +568,12 @@ function Kitchen() {
                   <div className="card-heading">
                     <strong className="order-number">#{order.number}</strong>
                     <span className="elapsed">
-                      {Math.max(0, Math.floor((now - (order.queuedAt ?? order.createdAt)) / 60000))}{" "}
+                      {Math.max(
+                        0,
+                        Math.floor(
+                          (now - (order.queuedAt ?? order.createdAt)) / 60000,
+                        ),
+                      )}{" "}
                       min
                     </span>
                   </div>

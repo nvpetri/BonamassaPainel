@@ -181,9 +181,13 @@ export function ApiPanelProvider({ children }: { children: ReactNode }) {
     }
     const revision = ++generation.current;
     try {
-      const scheduleCatalog = user.role === "KITCHEN" ? null :
-        catalogSchema.parse(await get("staff/catalog"));
-      const statuses = scheduleCatalog?.store.scheduleEnabled ? ["SCHEDULED", ...active] : active;
+      const scheduleCatalog =
+        user.role === "KITCHEN"
+          ? null
+          : catalogSchema.parse(await get("staff/catalog"));
+      const statuses = scheduleCatalog?.store.scheduleEnabled
+        ? ["SCHEDULED", ...active]
+        : active;
       const jobs = await Promise.all(statuses.map((status) => pages(status)));
       const isKitchen = user.role === "KITCHEN";
       const history = isKitchen
@@ -205,9 +209,7 @@ export function ApiPanelProvider({ children }: { children: ReactNode }) {
       const records = [...byId.values()].sort((a, b) => b.number - a.number);
       const [nextCatalog, nextDrivers, nextUsers, nextPending] =
         await Promise.all([
-          isKitchen
-            ? null
-            : scheduleCatalog,
+          isKitchen ? null : scheduleCatalog,
           isKitchen
             ? []
             : get("staff/drivers").then((r) => z.array(driverDto).parse(r)),

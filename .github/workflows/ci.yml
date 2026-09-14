@@ -29,10 +29,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Report canonical formatting
-        run: |
-          npx --no-install prettier --write .
-          git diff
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

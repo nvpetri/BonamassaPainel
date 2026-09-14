@@ -274,9 +274,11 @@ export function OrderCard({
         </span>
       </div>
       <div className="card-customer">{order.customer}</div>
-      {order.scheduledFor && order.status === "SCHEDULED" && <p className="field-hint">
-        Agendado para {storeDate(order.scheduledFor)} · Horário de São Paulo
-      </p>}
+      {order.scheduledFor && order.status === "SCHEDULED" && (
+        <p className="field-hint">
+          Agendado para {storeDate(order.scheduledFor)} · Horário de São Paulo
+        </p>
+      )}
       <div className="order-meta">
         <span>
           {order.mode === "DELIVERY" ? (

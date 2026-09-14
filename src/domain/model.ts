@@ -346,7 +346,12 @@ export const brl = (cents: number) =>
     cents / 100,
   );
 export const minutesWaiting = (order: Order, now: number) =>
-  order.status === "SCHEDULED" ? 0 : Math.max(0, Math.floor((now - (order.queuedAt ?? order.createdAt)) / 60_000));
+  order.status === "SCHEDULED"
+    ? 0
+    : Math.max(
+        0,
+        Math.floor((now - (order.queuedAt ?? order.createdAt)) / 60_000),
+      );
 
 const requireThat: (ok: unknown, message: string) => asserts ok = (
   ok,

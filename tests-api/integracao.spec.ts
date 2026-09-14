@@ -412,9 +412,13 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
     await attendantContext.close();
   });
   await test.step("horários, reserva e confirmação de abertura antecipada", async () => {
-    const clock = (offset: number) => new Intl.DateTimeFormat("en-GB", {
-      timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).format(new Date(Date.now() + offset * 60_000));
+    const clock = (offset: number) =>
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "America/Sao_Paulo",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(new Date(Date.now() + offset * 60_000));
     await page.goto("/configuracoes");
     await page.getByRole("button", { name: "Configurar horários" }).click();
     const schedule = page.getByRole("dialog");
@@ -423,38 +427,62 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
     await schedule.getByRole("button", { name: "Salvar horários" }).click();
     await expect(schedule).not.toBeVisible();
     await page.goto("/pedidos");
-    await expect(page.getByText("Loja fechada · Reservas abertas", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Nova reserva", exact: true }).click();
+    await expect(
+      page.getByText("Loja fechada · Reservas abertas", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Nova reserva", exact: true })
+      .click();
     const reservation = page.getByRole("dialog");
     await reservation.getByLabel("Nome do cliente").fill("Reserva de teste");
     await reservation.getByLabel("Telefone com DDD").fill("11999999999");
     await reservation.getByLabel("Como vai receber?").selectOption("PICKUP");
     await reservation.getByLabel("Sabor principal").selectOption("calabresa");
-    await reservation.getByRole("button", { name: /Adicionar (pizza|ao pedido|item)/i }).click();
+    await reservation
+      .getByRole("button", { name: /Adicionar (pizza|ao pedido|item)/i })
+      .click();
     await reservation.getByRole("button", { name: "Revisar pedido" }).click();
     await expect(reservation.getByText(/Reserva para/)).toBeVisible();
-    await reservation.getByRole("button", { name: "Confirmar reserva", exact: true }).click();
+    await reservation
+      .getByRole("button", { name: "Confirmar reserva", exact: true })
+      .click();
     await expect(reservation).not.toBeVisible();
     await page.reload();
-    const card = page.locator(".order-card").filter({ hasText: "Reserva de teste" });
+    const card = page
+      .locator(".order-card")
+      .filter({ hasText: "Reserva de teste" });
     await expect(card.getByText("Agendado", { exact: true })).toBeVisible();
-    await expect(card.getByRole("button", { name: "Aceitar pedido" })).toHaveCount(0);
-    const response = await request.get(`${url}/v1/staff/orders?status=SCHEDULED`, {
-      headers: { Authorization: `Bearer ${bearer}` },
-    });
-    const reserved = (await response.json()).items.find((o: { customer: { name: string } }) => o.customer.name === "Reserva de teste");
+    await expect(
+      card.getByRole("button", { name: "Aceitar pedido" }),
+    ).toHaveCount(0);
+    const response = await request.get(
+      `${url}/v1/staff/orders?status=SCHEDULED`,
+      {
+        headers: { Authorization: `Bearer ${bearer}` },
+      },
+    );
+    const reserved = (await response.json()).items.find(
+      (o: { customer: { name: string } }) =>
+        o.customer.name === "Reserva de teste",
+    );
     expect(reserved.scheduledFor).toBeTruthy();
     await kitchen.reload();
-    await expect(kitchen.getByTestId(`order-${reserved.number}`)).toHaveCount(0);
+    await expect(kitchen.getByTestId(`order-${reserved.number}`)).toHaveCount(
+      0,
+    );
     await page.getByRole("button", { name: "Loja pausada" }).click();
-    const popup = page.getByRole("dialog", { name: "Abrir fora do horário programado?" });
+    const popup = page.getByRole("dialog", {
+      name: "Abrir fora do horário programado?",
+    });
     await expect(popup).toBeVisible();
     await popup.getByRole("button", { name: "Manter fechada" }).click();
     await expect(card.getByText("Agendado", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Loja pausada" }).click();
     await popup.getByRole("button", { name: "Sim, abrir agora" }).click();
     await expect(popup).not.toBeVisible();
-    await expect(card.getByRole("button", { name: "Aceitar pedido" })).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "Aceitar pedido" }),
+    ).toBeVisible();
     await expect(card).not.toHaveClass(/late/);
   });
   await page.screenshot({
