@@ -403,8 +403,8 @@ export function StoreControl() {
             </p>
             <p>
               As reservas da próxima abertura serão liberadas para o
-              atendimento. A cozinha ainda precisará aceitar e preparar cada
-              pedido.
+              atendimento. Cada pedido ainda será aceito pela equipe de atendimento
+              antes do preparo na cozinha.
             </p>
             <p>
               A abertura manual é temporária; depois a programação automática
