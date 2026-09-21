@@ -32,6 +32,7 @@ import { NewOrder } from "./new-order";
 import { RemoteSettings, StoreControl, roleLabels } from "./remote-settings";
 import { storeDate } from "@/domain/schedule";
 import { ItemComponents } from "./order-components";
+import { request } from "@/data/api-client";
 
 const nav = [
   { view: "pedidos", icon: ClipboardList },
@@ -468,72 +469,68 @@ export function ApiDashboard({ view: requested }: { view: View }) {
 function Login() {
   const { api, toast, reload } = usePanel();
   const [email, setEmail] = useState(""),
-    [password, setPassword] = useState("");
+    [password, setPassword] = useState(""),
+    [newPassword, setNewPassword] = useState(""),
+    [code, setCode] = useState(""),
+    [mode, setMode] = useState<"login" | "verify" | "forgot" | "reset">("login"),
+    [accountBusy, setAccountBusy] = useState(false),
+    [accountMessage, setAccountMessage] = useState("");
+  const account = async (body: object, next?: typeof mode) => {
+    setAccountBusy(true);
+    setAccountMessage("");
+    try {
+      await request("/api/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (next) setMode(next);
+      setAccountMessage("Solicitação concluída. Confira seu e-mail.");
+    } catch (error) {
+      setAccountMessage(error instanceof Error ? error.message : "Não foi possível concluir.");
+    } finally {
+      setAccountBusy(false);
+    }
+  };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    await api!.login(email.trim(), password);
-    setPassword("");
+    if (mode === "login") {
+      await api!.login(email.trim(), password);
+      setPassword("");
+    } else if (mode === "verify") {
+      await account({ action: "verify-confirm", email: email.trim(), code });
+      setMode("login"); setCode("");
+    } else if (mode === "forgot") {
+      await account({ action: "reset-request", email: email.trim() }, "reset");
+      setCode("");
+    } else {
+      await account({ action: "reset-confirm", email: email.trim(), code, newPassword }, "login");
+      setCode(""); setNewPassword(""); setPassword("");
+    }
   };
+  const busy = api!.authenticating || accountBusy;
   return (
     <main className="remote-login">
       <div className="remote-login-card">
-        <Image
-          src="/bonamassa-logo.webp"
-          alt="Bonamassa Pizzaria"
-          width={100}
-          height={100}
-          priority
-        />
+        <Image src="/bonamassa-logo.webp" alt="Bonamassa Pizzaria" width={100} height={100} priority />
         <span className="eyebrow">PAINEL DA PIZZARIA</span>
-        <h1>Bom trabalho começa aqui.</h1>
-        <p>Entre para acompanhar os pedidos e cuidar de cada entrega.</p>
+        <h1>{mode === "verify" ? "Confirme seu e-mail." : mode === "forgot" ? "Recupere seu acesso." : mode === "reset" ? "Crie uma nova senha." : "Bom trabalho começa aqui."}</h1>
+        <p>{mode === "verify" ? "Digite o código enviado para o seu e-mail." : mode === "forgot" ? "Informe seu e-mail para receber o código de recuperação." : mode === "reset" ? "Informe o código recebido e escolha uma nova senha." : "Entre para acompanhar os pedidos e cuidar de cada entrega."}</p>
         <form onSubmit={submit}>
-          <Field label="E-mail">
-            <input
-              type="email"
-              required
-              autoComplete="username"
-              maxLength={160}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </Field>
-          <Field label="Senha">
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              maxLength={128}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
-          {toast && (
-            <p role="alert" className="inline-error">
-              {toast.message}
-            </p>
-          )}
-          {api!.stale && (
-            <div role="alert">
-              <p>{api!.stale}</p>
-              <Button onClick={() => void reload()}>
-                Tentar conexão novamente
-              </Button>
-            </div>
-          )}
-          <Button
-            className="full"
-            type="submit"
-            tone="primary"
-            disabled={api!.authenticating}
-          >
-            {api!.authenticating ? "Conectando…" : "Entrar no painel"}
+          {mode !== "verify" && mode !== "reset" && <Field label="E-mail"><input type="email" required autoComplete="username" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>}
+          {(mode === "verify" || mode === "reset") && <Field label="Código de 6 dígitos"><input inputMode="numeric" pattern="[0-9]{6}" required maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} /></Field>}
+          {mode === "login" && <Field label="Senha"><input type="password" required autoComplete="current-password" maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} /></Field>}
+          {mode === "reset" && <Field label="Nova senha"><input type="password" required autoComplete="new-password" minLength={12} maxLength={128} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></Field>}
+          {(toast || accountMessage) && <p role="alert" className="inline-error">{accountMessage || toast?.message}</p>}
+          {api!.stale && <div role="alert"><p>{api!.stale}</p><Button onClick={() => void reload()}>Tentar conexão novamente</Button></div>}
+          <Button className="full" type="submit" tone="primary" disabled={busy}>
+            {busy ? "Aguarde…" : mode === "verify" ? "Confirmar e-mail" : mode === "forgot" ? "Enviar código" : mode === "reset" ? "Salvar nova senha" : "Entrar no painel"}
           </Button>
+          {mode === "login" && <>
+            <Button type="button" tone="ghost" className="full" disabled={busy} onClick={() => setMode("forgot")}>Esqueci minha senha</Button>
+            <Button type="button" tone="ghost" className="full" disabled={busy || !email.trim()} onClick={() => { setMode("verify"); void account({ action: "verify-request", email: email.trim() }); }}>Confirmar meu e-mail</Button>
+          </>}
+          {mode === "verify" && <Button type="button" tone="ghost" className="full" disabled={busy} onClick={() => void account({ action: "verify-request", email: email.trim() })}>Reenviar código</Button>}
+          {mode === "reset" && <Button type="button" tone="ghost" className="full" disabled={busy} onClick={() => void account({ action: "reset-request", email: email.trim() })}>Reenviar código</Button>}
+          {mode !== "login" && <Button type="button" tone="ghost" className="full" disabled={busy} onClick={() => setMode("login")}>Voltar para entrar</Button>}
         </form>
-        <p className="field-hint">
-          Use o acesso cadastrado na API Bonamassa. Contas de cozinha abrem
-          diretamente a tela de produção.
-        </p>
+        <p className="field-hint">Use o acesso cadastrado na API Bonamassa. Contas de cozinha abrem diretamente a tela de produção.</p>
       </div>
     </main>
   );
