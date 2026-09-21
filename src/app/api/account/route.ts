@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { config, sameOrigin } from "@/server/session";
-import { failure, forward, HttpError, readJson, upstream } from "@/server/http";
+import { COOKIE, config, panelRole, sameOrigin, seal } from "@/server/session";
+import { failure, forward, HttpError, json, readJson, upstream } from "@/server/http";
 
 export const runtime = "nodejs";
 
@@ -23,11 +23,26 @@ export async function POST(request: Request) {
       "reset-request": "auth/password-reset/request",
       "reset-confirm": "auth/password-reset/confirm",
     } as const;
-    return forward(await upstream(paths[action], {
+    const response = await upstream(paths[action], {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...data, storeSlug: config().slug }),
-    }));
+    });
+    if (!response.ok || action !== "verify-confirm") return forward(response);
+    const session = await response.json();
+    if (!panelRole.safeParse(session.user?.role).success) {
+      if (typeof session.accessToken === "string")
+        await upstream("sessions/current", { method: "DELETE" }, session.accessToken);
+      throw new HttpError(403, "Esta conta não tem acesso ao painel.");
+    }
+    const expires = Date.parse(session.expiresAt);
+    if (!Number.isFinite(expires) || typeof session.accessToken !== "string")
+      throw new HttpError(502, "Sessão inválida retornada pela API.");
+    const result = json({ user: session.user });
+    result.cookies.set(COOKIE, seal(session.accessToken, expires), {
+      httpOnly: true, sameSite: "strict", secure: config().secure, path: "/", expires: new Date(expires),
+    });
+    return result;
   } catch (error) {
     return failure(error);
   }
