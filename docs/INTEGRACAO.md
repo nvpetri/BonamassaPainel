@@ -1,6 +1,6 @@
 # Integração implementada — painel 0.4.0
 
-Referência: APIBonamassa `95f93f7f8331759c1b826c5bb04f255e680f8bbf`, a mesma revisão fixada nos testes dos aplicativos cliente e entregador.
+Referência: APIBonamassa `dad549c6225115c018e2d38e42b1c2b1965a6771`, a mesma revisão fixada nos testes dos aplicativos cliente e entregador.
 
 O navegador conversa com o servidor Next.js na mesma origem. `API_URL` e `SESSION_SECRET` são variáveis apenas do servidor. Os Route Handlers de `/api/session` e `/api/backend/[...path]` trocam o cookie criptografado pelo Bearer da API. Não existe proxy de URL arbitrária: métodos e caminhos são limitados aos contratos do painel. Escritas validam Origin/Host e recebem Idempotency-Key. A API continua validando usuário, unidade e perfil.
 
