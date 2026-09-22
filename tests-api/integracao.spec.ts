@@ -28,6 +28,15 @@ async function token(
   expect(response.ok()).toBeTruthy();
   return (await response.json()).accessToken as string;
 }
+async function verifyStaff(request: APIRequestContext, user: string) {
+  await request.post(`${url}/v1/auth/email-verification/request`, {
+    data: { storeSlug: "bonamassa", email: user },
+  });
+  const response = await request.post(`${url}/v1/auth/email-verification/confirm`, {
+    data: { storeSlug: "bonamassa", email: user, code: "123456" },
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+}
 async function command(
   request: APIRequestContext,
   bearer: string,
@@ -131,6 +140,9 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
       await expect(page.getByText(address, { exact: true })).toBeVisible();
     }
   });
+  await verifyStaff(request, "cozinha@teste.example");
+  await verifyStaff(request, "entrega@teste.example");
+  await verifyStaff(request, "balcao@teste.example");
   const bearer = await token(request);
   const driverBearer = await token(
     request,
