@@ -1,6 +1,6 @@
 # Integração implementada — painel 0.4.0
 
-Referência: APIBonamassa `c9fcefad3827343a27abd5b0d14970a935b182b5` (PR #1 integrado).
+Referência: APIBonamassa `95f93f7f8331759c1b826c5bb04f255e680f8bbf`, a mesma revisão fixada nos testes dos aplicativos cliente e entregador.
 
 O navegador conversa com o servidor Next.js na mesma origem. `API_URL` e `SESSION_SECRET` são variáveis apenas do servidor. Os Route Handlers de `/api/session` e `/api/backend/[...path]` trocam o cookie criptografado pelo Bearer da API. Não existe proxy de URL arbitrária: métodos e caminhos são limitados aos contratos do painel. Escritas validam Origin/Host e recebem Idempotency-Key. A API continua validando usuário, unidade e perfil.
 
@@ -29,6 +29,6 @@ O navegador conversa com o servidor Next.js na mesma origem. `API_URL` e `SESSIO
 
 ## Continuidade
 
-Integração dos aplicativos Android cliente e entregador permanece para alterações próprias em seus repositórios. O backend já tem endpoints para esses perfis. Nenhuma etapa exclusiva do entregador é simulada pelo gerente nesta versão.
+Os aplicativos Android cliente e entregador usam os mesmos contratos da API, loja, pedidos e versões. Cada perfil executa suas ações autorizadas. O painel renova o cookie criptografado com a validade confirmada pela API em cada consulta de sessão e operação autenticada: a sessão expira após cinco dias sem uso. Confirmação de e-mail e recuperação de senha da equipe são acessíveis na tela de entrada; os testes de integração exercitam esses fluxos com PostgreSQL e o provedor de e-mail isolado de teste.
 
 Os requisitos ainda sujeitos à validação da pizzaria (preço do meio a meio, área/taxa de entrega, pagamentos, fiscal, fotos reais, acesso de funcionários) permanecem decisões de produto; esta integração usa os contratos existentes da API.

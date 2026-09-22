@@ -69,6 +69,7 @@ async function handle(
         { method: request.method, headers, body },
         current.token,
       ),
+      current.token,
     );
   } catch (error) {
     return failure(error);

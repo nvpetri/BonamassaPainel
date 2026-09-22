@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { COOKIE, config, unseal } from "./session";
+import { COOKIE, config, seal, unseal } from "./session";
 
 export class HttpError extends Error {
   constructor(
@@ -72,7 +72,26 @@ export async function upstream(
     );
   }
 }
-export async function forward(response: Response) {
+export function renewSession(
+  result: NextResponse,
+  response: Response,
+  token: string,
+) {
+  const expires = Date.parse(
+    response.headers.get("X-Session-Expires-At") || "",
+  );
+  if (response.ok && Number.isFinite(expires) && expires > Date.now()) {
+    result.cookies.set(COOKIE, seal(token, expires), {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: config().secure,
+      path: "/",
+      expires: new Date(expires),
+    });
+  }
+  return result;
+}
+export async function forward(response: Response, token?: string) {
   if (response.status === 204)
     return new NextResponse(null, {
       status: 204,
@@ -89,6 +108,7 @@ export async function forward(response: Response) {
     result.cookies.set(COOKIE, "", { maxAge: 0, path: "/" });
   if (response.headers.has("retry-after"))
     result.headers.set("Retry-After", response.headers.get("retry-after")!);
+  if (token) renewSession(result, response, token);
   return result;
 }
 export function failure(error: unknown) {

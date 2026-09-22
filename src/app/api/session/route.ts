@@ -6,6 +6,7 @@ import {
   HttpError,
   json,
   readJson,
+  renewSession,
   session,
   upstream,
 } from "@/server/http";
@@ -19,7 +20,7 @@ export async function GET() {
     const user = await response.json();
     if (!panelRole.safeParse(user.role).success)
       throw new HttpError(403, "Esta conta não tem acesso ao painel.");
-    return json({ user });
+    return renewSession(json({ user }), response, current.token);
   } catch (error) {
     return failure(error);
   }
