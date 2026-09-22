@@ -15,7 +15,8 @@ describe("sessão do painel", () => {
     expect(cookie).not.toContain(token);
     expect(unseal(cookie)?.token).toBe(token);
     expect(unseal(`x${cookie.slice(1)}`)).toBeNull();
-    expect(unseal(seal(token, Date.now() - 1))).toBeNull();
+    const expired = seal(token, Date.now() - 1000);
+    expect(unseal(expired)).toBeNull();
     vi.stubEnv("STORE_SLUG", "outra-pizzaria");
     expect(unseal(cookie)).toBeNull();
   });
