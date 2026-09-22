@@ -495,7 +495,7 @@ function Login() {
       setPassword("");
     } else if (mode === "verify") {
       await account({ action: "verify-confirm", email: email.trim(), code });
-      setMode("login"); setCode("");
+      setCode("");
       await reload();
     } else if (mode === "forgot") {
       await account({ action: "reset-request", email: email.trim() }, "reset");
