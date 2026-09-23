@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ClipboardList,
   History,
+  ChartNoAxesCombined,
   LogOut,
   Menu,
   Pizza,
@@ -32,9 +33,11 @@ import { NewOrder } from "./new-order";
 import { RemoteSettings, StoreControl, roleLabels } from "./remote-settings";
 import { storeDate } from "@/domain/schedule";
 import { ItemComponents } from "./order-components";
+import { ManagerDashboard } from "./manager-dashboard";
 import { request } from "@/data/api-client";
 
 const nav = [
+  { view: "dashboard", icon: ChartNoAxesCombined },
   { view: "pedidos", icon: ClipboardList },
   { view: "cozinha", icon: ChefHat },
   { view: "entregas", icon: Truck },
@@ -46,6 +49,7 @@ const nav = [
 export function ApiDashboard({ view: requested }: { view: View }) {
   const { api, state, busy, now, toast, reload, sound, toggleSound } =
     usePanel();
+  const [dashboardRefresh, setDashboardRefresh] = useState(0);
   const [menu, setMenu] = useState(false),
     [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -202,7 +206,10 @@ export function ApiDashboard({ view: requested }: { view: View }) {
               className="icon-button"
               aria-label="Atualizar dados"
               disabled={api.writing}
-              onClick={() => void reload()}
+              onClick={() => {
+                setDashboardRefresh((n) => n + 1);
+                void reload();
+              }}
             >
               <RefreshCw size={18} />
             </Button>
@@ -289,6 +296,12 @@ export function ApiDashboard({ view: requested }: { view: View }) {
             />
           ) : (
             <>
+              {view === "dashboard" && role === "MANAGER" && (
+                <ManagerDashboard
+                  key={api.user.id}
+                  refresh={dashboardRefresh}
+                />
+              )}
               {view === "cozinha" && <Kitchen />}
               {view === "cardapio" && <Catalog />}
               {view === "promocoes" && <Promotions />}
@@ -437,7 +450,7 @@ export function ApiDashboard({ view: requested }: { view: View }) {
               )}
             </>
           )}
-          {api.updatedAt > 0 && (
+          {view !== "dashboard" && api.updatedAt > 0 && (
             <p className="remote-updated">
               Última atualização:{" "}
               {new Date(api.updatedAt).toLocaleTimeString("pt-BR")} ·

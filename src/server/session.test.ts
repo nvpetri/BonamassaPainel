@@ -31,6 +31,8 @@ describe("sessão do painel", () => {
     expect(sameOrigin(make())).toBe(false);
   });
   it("só permite os contratos do painel no proxy", () => {
+    expect(allowedRoute("GET", "staff/dashboard")).toBe(true);
+    expect(allowedRoute("POST", "staff/dashboard")).toBe(false);
     expect(allowedRoute("POST", "staff/orders/abc/accept")).toBe(true);
     expect(allowedRoute("PATCH", "staff/products/calabresa")).toBe(true);
     for (const path of [

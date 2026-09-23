@@ -57,11 +57,11 @@ async function handle(
       }
     }
     const search = new URL(request.url).searchParams;
-    if (
-      [...search.keys()].some(
-        (name) => !["status", "limit", "cursor"].includes(name),
-      )
-    )
+    const filters =
+      path === "staff/dashboard"
+        ? ["from", "to"]
+        : ["status", "limit", "cursor"];
+    if ([...search.keys()].some((name) => !filters.includes(name)))
       throw new HttpError(400, "Filtro inválido.");
     return forward(
       await upstream(

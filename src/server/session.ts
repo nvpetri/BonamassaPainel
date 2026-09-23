@@ -5,7 +5,10 @@ import {
   randomBytes,
 } from "node:crypto";
 import { z } from "zod";
-import { isHardened, productionSettings } from "../../scripts/production-config.mjs";
+import {
+  isHardened,
+  productionSettings,
+} from "../../scripts/production-config.mjs";
 
 export const COOKIE = "bonamassa_panel";
 export const panelRole = z.enum(["MANAGER", "ATTENDANT", "KITCHEN"]);
@@ -88,7 +91,7 @@ export function allowedRoute(method: string, path: string) {
   const routes: Record<string, RegExp[]> = {
     GET: [
       /^me$/,
-      /^staff\/(catalog|promotions|users|drivers)$/,
+      /^staff\/(catalog|promotions|users|drivers|dashboard)$/,
       new RegExp(`^staff/orders(?:/${id})?$`),
     ],
     POST: [

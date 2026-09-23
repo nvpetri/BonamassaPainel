@@ -1,4 +1,5 @@
 export const views = [
+  "dashboard",
   "pedidos",
   "cozinha",
   "entregas",
@@ -12,6 +13,11 @@ export const viewInfo: Record<
   View,
   { title: string; subtitle: string; section: string }
 > = {
+  dashboard: {
+    title: "Dashboard",
+    subtitle: "Vendas, pedidos e entregas: acompanhe o ritmo da pizzaria.",
+    section: "Gestão",
+  },
   pedidos: {
     title: "Pedidos",
     subtitle: "Acompanhe cada pedido, do recebimento à entrega.",

@@ -32,3 +32,15 @@ O navegador conversa com o servidor Next.js na mesma origem. `API_URL` e `SESSIO
 Os aplicativos Android cliente e entregador usam os mesmos contratos da API, loja, pedidos e versões. Cada perfil executa suas ações autorizadas. O painel renova o cookie criptografado com a validade confirmada pela API em cada consulta de sessão e operação autenticada: a sessão expira após cinco dias sem uso. Confirmação de e-mail e recuperação de senha da equipe são acessíveis na tela de entrada; os testes de integração exercitam esses fluxos com PostgreSQL e o provedor de e-mail isolado de teste.
 
 Os requisitos ainda sujeitos à validação da pizzaria (preço do meio a meio, área/taxa de entrega, pagamentos, fiscal, fotos reais, acesso de funcionários) permanecem decisões de produto; esta integração usa os contratos existentes da API.
+
+## Dashboard do gerente
+
+Acesse `/dashboard` com a função **Gerente**. O menu é exclusivo desta função; a API também recusa atendentes, cozinha, entregadores e clientes. O modo demo continua com as telas operacionais; o dashboard utiliza dados reais no modo API.
+
+Filtros: hoje, últimos 7 ou 30 dias e intervalo personalizado de até 366 dias, sempre no calendário de São Paulo. A atualização ocorre a cada 30 segundos com a página visível, ao retornar à janela ou pelo botão Atualizar dados. Falhas mostram um aviso e preservam somente o último resultado do mesmo período. Respostas atrasadas de filtros anteriores são descartadas.
+
+O painel apresenta vendas concluídas, pizzas (avulsas e combos), ticket médio, pedidos recebidos, gráfico diário com tabela acessível, canais Aplicativo/WhatsApp/Balcão, formas de pagamento, descontos, fretes e comissões. Recebidos usam a data de criação; vendas e encerramentos usam sua data de conclusão. Cancelados e devolvidos não contam como vendas. O saldo após comissões não é lucro nem conciliação de pagamentos.
+
+A fila de pedidos e a disponibilidade dos motoboys refletem a situação atual, independente do período; entregas concluídas, devoluções e comissões respeitam o filtro. Disponibilidade declarada não equivale a presença online. Motoboys desabilitados permanecem no histórico.
+
+Pedidos antigos com combos sem quantidade histórica registrada geram um aviso de contagem parcial de pizzas. Valores em reais permanecem completos. A agregação ocorre em `GET /v1/staff/dashboard?from=AAAA-MM-DD&to=AAAA-MM-DD`, incluindo todo o histórico, sem o limite de paginação da tela de pedidos. Atualize a API antes do painel; esta versão não exige nova variável de ambiente ou migração de banco.
