@@ -189,9 +189,11 @@ test("gerente acompanha vendas, filtra períodos e protege o dashboard", async (
     await expect(page.getByTestId("metric-ticket")).toHaveText(brl(0));
     await page.getByLabel("De", { exact: true }).fill("2000-01-03");
     await page.getByRole("button", { name: "Aplicar período" }).click();
-    await expect(page.getByRole("alert")).toContainText(
-      "Escolha datas válidas",
-    );
+    await expect(
+      page
+        .getByRole("region", { name: "Métricas gerenciais" })
+        .getByRole("alert"),
+    ).toContainText("Escolha datas válidas");
     await page.getByRole("button", { name: "Hoje", exact: true }).click();
     await expect(page.getByTestId("metric-revenue")).toHaveText(
       brl(expected.sales.revenue),
