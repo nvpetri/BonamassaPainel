@@ -60,7 +60,20 @@ async function handle(
     const filters =
       path === "staff/dashboard"
         ? ["from", "to"]
-        : ["status", "limit", "cursor"];
+        : path === "staff/audit"
+          ? [
+              "from",
+              "to",
+              "table",
+              "recordId",
+              "actorId",
+              "requestId",
+              "operation",
+              "origin",
+              "limit",
+              "cursor",
+            ]
+          : ["status", "limit", "cursor"];
     if ([...search.keys()].some((name) => !filters.includes(name)))
       throw new HttpError(400, "Filtro inválido.");
     return forward(
