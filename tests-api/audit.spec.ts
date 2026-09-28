@@ -11,7 +11,9 @@ test("gerente consulta alteração real e compara antes/depois na auditoria", as
   await page
     .getByLabel("Senha", { exact: true })
     .fill(process.env.SEED_MANAGER_PASSWORD!);
-  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Entrar no painel", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Editar operação", exact: true })
     .click();
