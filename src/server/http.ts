@@ -62,6 +62,7 @@ export async function upstream(
       signal: AbortSignal.timeout(20_000),
       headers: {
         ...init.headers,
+        "X-Client-Source": "PANEL",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });

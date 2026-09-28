@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { Plus, Save, Users } from "lucide-react";
+import { AuditViewer } from "./audit-viewer";
 import { randomId } from "@/data/api-client";
 import { type ApiStore } from "@/data/api-contract";
 import { needsEarlyConfirmation, storeDate } from "@/domain/schedule";
@@ -27,6 +28,7 @@ export function RemoteSettings() {
   const [editing, setEditing] = useState<ApiStore | null>(null);
   const [creating, setCreating] = useState(false);
   const [hours, setHours] = useState(false);
+  const [audit, setAudit] = useState(false);
   const store = api!.catalog!.store;
   return (
     <>
@@ -109,6 +111,10 @@ export function RemoteSettings() {
           </p>
         </section>
       </div>
+      <Button onClick={() => setAudit((v) => !v)}>
+        {audit ? "Fechar auditoria" : "Consultar auditoria"}
+      </Button>
+      {audit && <AuditViewer />}
       <div className="section-heading">
         <div>
           <h2>

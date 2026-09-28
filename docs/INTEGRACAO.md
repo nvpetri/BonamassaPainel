@@ -60,3 +60,7 @@ A integração em CI usa API `207760152ea909a05dabe5d45de545a812e9a0b7`. As mét
 Na rota `/dashboard`, a atualização dos dados gerais ocorre a cada 30 segundos; telas operacionais continuam a cada 5 segundos. Métricas só são consultadas na tela gerencial. Consultas automáticas pausam quando a aba está oculta ou offline; retorno à aba/rede retoma a atualização sem requisições automáticas sobrepostas. Operações e atualização manual continuam consultando normalmente.
 
 Para permitir suspensão do banco sem usuários, consultar `docs/producao/08-NEON-FREE.md` da API: `SCHEDULER_INTERVAL_SECONDS=0` desativa o scanner periódico, mas mantém reconciliação nas requisições de catálogo/pedidos. Sem acessos, a liberação de reservas aguarda a próxima requisição. O workflow de backup criptografado precisa ser ativado separadamente na API.
+
+## Auditoria
+
+Em Configurações → Consultar auditoria, o gerente pode filtrar registros por período, tabela, conta, operação, origem, ID do registro e requisição, e comparar antes/depois. A consulta só ocorre quando solicitada; detalhes são carregados separadamente. Contas compartilhadas identificam o setor. Campos protegidos não revelam segredos nem contatos pessoais. Requer a migração `202609280002_audit_trail` da API; o histórico estruturado começa após essa migração, preservando Audit/OrderEvent existentes. Esta integração fixa a API em `07a73957de48267384b35a21068cea1380dc64fa`.

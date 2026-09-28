@@ -91,7 +91,8 @@ export function allowedRoute(method: string, path: string) {
   const routes: Record<string, RegExp[]> = {
     GET: [
       /^me$/,
-      /^staff\/(catalog|promotions|users|drivers|dashboard)$/,
+      /^staff\/audit\/[1-9]\d{0,18}$/,
+      /^staff\/(catalog|promotions|users|drivers|dashboard|audit)$/,
       new RegExp(`^staff/orders(?:/${id})?$`),
     ],
     POST: [
@@ -119,7 +120,11 @@ export function sameOrigin(request: Request) {
   try {
     if (isHardened()) {
       const expected = productionSettings().origin;
-      return origin === expected && host === new URL(expected).host && request.headers.get("sec-fetch-site") !== "cross-site";
+      return (
+        origin === expected &&
+        host === new URL(expected).host &&
+        request.headers.get("sec-fetch-site") !== "cross-site"
+      );
     }
     return (
       new URL(origin).host === host &&

@@ -5214,3 +5214,52 @@ body:has(dialog[open]) .toast {
     font-size: 27px;
   }
 }
+
+.audit-viewer {
+  margin-block: 20px;
+  min-width: 0;
+}
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-block: 20px;
+}
+.audit-results {
+  display: grid;
+  gap: 12px;
+  margin-block: 20px;
+}
+.audit-entry {
+  border: 1px solid var(--line, #494030);
+  border-radius: 12px;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+.audit-details {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.audit-details dl > div {
+  margin-block: 12px;
+}
+.audit-details dt {
+  font-weight: 700;
+}
+.audit-details dd {
+  margin: 4px 0 0;
+}
+.audit-change {
+  border-top: 1px solid #494030;
+  margin-top: 20px;
+  padding-top: 12px;
+}
+.audit-change pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  background: #12100c;
+  color: #f5eee2;
+  padding: 12px;
+  border-radius: 8px;
+}
