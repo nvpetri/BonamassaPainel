@@ -115,8 +115,8 @@ export function RemoteSettings() {
             <Users size={22} /> Equipe
           </h2>
           <p>
-            Cadastre os acessos para testar o atendimento, a cozinha e as
-            entregas.
+            Convide os entregadores individualmente. Para cozinha e balcão, use
+            uma conta do setor e o e-mail do responsável pela ativação.
           </p>
         </div>
         <Button
@@ -132,12 +132,51 @@ export function RemoteSettings() {
           <article key={user.id} className="settings-card">
             <div className="section-heading compact">
               <h3>{user.name}</h3>
-              <Badge tone={user.enabled ? "green" : "red"}>
-                {user.enabled ? "Ativo" : "Desativado"}
+              <Badge
+                tone={
+                  !user.enabled
+                    ? "red"
+                    : user.onboardingPending
+                      ? "gold"
+                      : "green"
+                }
+              >
+                {!user.enabled
+                  ? "Desativado"
+                  : user.onboardingPending
+                    ? "Cadastro pendente"
+                    : "Ativo"}
               </Badge>
             </div>
             <p>{user.email}</p>
             <p>{roleLabels[user.role]}</p>
+            {user.onboardingPending && (
+              <>
+                <p className="field-hint">
+                  {user.invitationStatus === "SENT"
+                    ? "Convite enviado · aguardando conclusão"
+                    : user.invitationStatus === "EXPIRED"
+                      ? "Convite expirado · reenvie para continuar"
+                      : user.invitationStatus === "REVOKED"
+                        ? "Convite invalidado · reenvie após ativar o acesso"
+                        : "Envio não confirmado · reenvie o convite"}
+                </p>
+                {user.enabled && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void api!.run(
+                        `staff/users/${user.id}/invite`,
+                        {},
+                        "Convite processado. Confira o status de envio na conta.",
+                      )
+                    }
+                  >
+                    Reenviar convite
+                  </Button>
+                )}
+              </>
+            )}
             {user.id === api!.user!.id ? (
               <small>Seu acesso</small>
             ) : (
@@ -250,9 +289,7 @@ function UserEditor({ onClose }: { onClose(): void }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    phone: "",
-    password: "",
-    role: "KITCHEN",
+    role: "DRIVER",
   });
   const attempt = useRef<{ body: string; key: string } | null>(null);
   const exists = api!.users.some(
@@ -264,7 +301,6 @@ function UserEditor({ onClose }: { onClose(): void }) {
       ...form,
       email: form.email.trim(),
       name: form.name.trim(),
-      phone: form.phone.replace(/[()\s-]/g, ""),
     };
     const encoded = JSON.stringify(body);
     if (attempt.current?.body !== encoded)
@@ -273,9 +309,7 @@ function UserEditor({ onClose }: { onClose(): void }) {
       setForm({
         name: "",
         email: "",
-        phone: "",
-        password: "",
-        role: "KITCHEN",
+        role: "DRIVER",
       });
       attempt.current = null;
       onClose();
@@ -284,7 +318,7 @@ function UserEditor({ onClose }: { onClose(): void }) {
   return (
     <Modal
       title="Nova conta da equipe"
-      subtitle="Cada pessoa usa seu próprio acesso."
+      subtitle="O convite por e-mail permite escolher a senha e completar os dados."
       onClose={onClose}
     >
       <form onSubmit={submit}>
@@ -307,15 +341,6 @@ function UserEditor({ onClose }: { onClose(): void }) {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </Field>
-          <Field label="Telefone com DDD">
-            <input
-              type="tel"
-              required
-              maxLength={20}
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-          </Field>
           <Field label="Função">
             <select
               value={form.role}
@@ -328,17 +353,13 @@ function UserEditor({ onClose }: { onClose(): void }) {
               ))}
             </select>
           </Field>
-          <Field label="Senha inicial" hint="Pelo menos 12 caracteres.">
-            <input
-              required
-              type="password"
-              minLength={12}
-              maxLength={128}
-              autoComplete="new-password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-          </Field>
+          <p className="field-hint">
+            {form.role === "DRIVER"
+              ? "O entregador informará o telefone e definirá a própria senha. O convite vale por 24 horas."
+              : form.role === "MANAGER"
+                ? "O gerente convidado definirá a própria senha pelo link enviado ao e-mail."
+                : "Para acesso compartilhado, use o nome do setor (por exemplo, Cozinha ou Balcão) e o e-mail do responsável. Ele definirá a senha pelo convite."}
+          </p>
           {exists && (
             <p role="status">
               Já existe uma conta com este e-mail. Confira a lista da equipe
@@ -349,7 +370,7 @@ function UserEditor({ onClose }: { onClose(): void }) {
         <footer className="modal-footer">
           <Button onClick={onClose}>Voltar</Button>
           <Button type="submit" tone="primary" disabled={busy || exists}>
-            Criar conta
+            Enviar convite
           </Button>
         </footer>
       </form>
@@ -403,8 +424,8 @@ export function StoreControl() {
             </p>
             <p>
               As reservas da próxima abertura serão liberadas para o
-              atendimento. Cada pedido ainda será aceito pela equipe de atendimento
-              antes do preparo na cozinha.
+              atendimento. Cada pedido ainda será aceito pela equipe de
+              atendimento antes do preparo na cozinha.
             </p>
             <p>
               A abertura manual é temporária; depois a programação automática

@@ -4,6 +4,7 @@ import {
   type Page,
   type APIRequestContext,
 } from "@playwright/test";
+import { acceptInvitation } from "./invitation-helper";
 import { randomUUID } from "node:crypto";
 
 const url = process.env.API_URL || "http://127.0.0.1:3001";
@@ -29,13 +30,7 @@ async function token(
   return (await response.json()).accessToken as string;
 }
 async function verifyStaff(request: APIRequestContext, user: string) {
-  await request.post(`${url}/v1/auth/email-verification/request`, {
-    data: { storeSlug: "bonamassa", email: user },
-  });
-  const response = await request.post(`${url}/v1/auth/email-verification/confirm`, {
-    data: { storeSlug: "bonamassa", email: user, code: "123456" },
-  });
-  expect(response.ok(), await response.text()).toBeTruthy();
+  await acceptInvitation(request, user, staffPassword);
 }
 async function command(
   request: APIRequestContext,
@@ -132,10 +127,10 @@ test("gerente → pedido real → cozinha → entregador → histórico, com cot
       const d = page.getByRole("dialog");
       await d.getByLabel("Nome", { exact: true }).fill(name);
       await d.getByLabel("E-mail", { exact: true }).fill(address);
-      await d.getByLabel("Telefone com DDD").fill("11988888888");
+      await expect(d.getByLabel("Telefone com DDD")).toHaveCount(0);
       await d.getByLabel("Função").selectOption(role);
-      await d.getByLabel("Senha inicial").fill(staffPassword);
-      await d.getByRole("button", { name: "Criar conta" }).click();
+      await expect(d.getByLabel("Senha inicial")).toHaveCount(0);
+      await d.getByRole("button", { name: "Enviar convite" }).click();
       await expect(d).not.toBeVisible();
       await expect(page.getByText(address, { exact: true })).toBeVisible();
     }

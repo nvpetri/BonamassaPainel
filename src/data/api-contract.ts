@@ -16,6 +16,13 @@ import { promotionSchema, promotionSnapshotSchema } from "../domain/promotions";
 
 const date = z.iso.datetime().transform(Date.parse);
 export const userSchema = z.object({
+  onboardingPending: z.boolean().default(false),
+  invitationStatus: z
+    .enum(["PENDING", "SENT", "EXPIRED", "REVOKED"])
+    .nullable()
+    .optional()
+    .default(null),
+  invitationExpiresAt: z.string().nullable().optional().default(null),
   id: z.string(),
   storeId: z.string(),
   name: z.string(),

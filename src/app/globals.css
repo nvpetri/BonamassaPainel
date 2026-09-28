@@ -5150,3 +5150,67 @@ body:has(dialog[open]) .toast {
     font-size: 12px;
   }
 }
+
+.invitation-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 18px;
+  background: radial-gradient(ellipse at top, #33271c, var(--bg) 65%);
+}
+.invitation-card {
+  width: 100%;
+  max-width: 490px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.invitation-card > img {
+  display: block;
+  margin-bottom: 24px;
+}
+.invitation-card h1 {
+  font-size: 30px;
+  letter-spacing: -0.8px;
+  margin: 10px 0 14px;
+}
+.invitation-card p {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 14px;
+}
+.invitation-card .inline-error {
+  color: var(--red);
+}
+.invitation-card form {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+.invitation-details {
+  padding: 18px;
+  background: var(--raised);
+  border-radius: 10px;
+  display: grid;
+  gap: 14px;
+  font-size: 13px;
+}
+.invitation-details dt {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.invitation-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 500px) {
+  .invitation-card {
+    padding: 24px 18px;
+  }
+  .invitation-card h1 {
+    font-size: 27px;
+  }
+}

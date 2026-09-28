@@ -44,3 +44,11 @@ O painel apresenta vendas concluídas, pizzas (avulsas e combos), ticket médio,
 A fila de pedidos e a disponibilidade dos motoboys refletem a situação atual, independente do período; entregas concluídas, devoluções e comissões respeitam o filtro. Disponibilidade declarada não equivale a presença online. Motoboys desabilitados permanecem no histórico.
 
 Pedidos antigos com combos sem quantidade histórica registrada geram um aviso de contagem parcial de pizzas. Valores em reais permanecem completos. A agregação ocorre em `GET /v1/staff/dashboard?from=AAAA-MM-DD&to=AAAA-MM-DD`, incluindo todo o histórico, sem o limite de paginação da tela de pedidos. Atualize a API antes do painel; esta versão não exige nova variável de ambiente ou migração de banco.
+
+## Cadastro da equipe por convite
+
+Em Configurações → Equipe → Nova conta, o gerente informa somente nome, função e e-mail. O funcionário recebe um link para `/convite`, define a senha e, para entregadores, informa o telefone. O e-mail é confirmado na ativação. Entregadores passam a entrar normalmente no aplicativo; cozinha e balcão podem usar uma conta por setor, ativada por quem controla o e-mail informado.
+
+A lista distingue cadastro pendente, convite enviado, expirado, invalidado ou envio não confirmado. Reenviar convite invalida o anterior; links duram 24 horas e são de uso único. Desativar o acesso também invalida o convite. Um cadastro já concluído usa a recuperação de senha existente. Funcionários antigos não precisam refazer o cadastro.
+
+Antes de publicar, aplique a nova migração da API e configure nela `STAFF_INVITE_URL=https://SEU-PAINEL/convite`, usando o endereço público real do painel. O Resend permanece configurado por EMAIL_API_KEY e EMAIL_FROM. Os e-mails de convite usam o mesmo remetente e estão sujeitos às permissões de envio desse remetente. O painel não precisa de uma nova variável.

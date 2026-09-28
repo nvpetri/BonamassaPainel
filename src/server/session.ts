@@ -96,6 +96,7 @@ export function allowedRoute(method: string, path: string) {
     ],
     POST: [
       /^orders\/quote$/,
+      new RegExp(`^staff/users/${id}/invite$`),
       /^me\/password$/,
       /^staff\/(orders|products|promotions|users|product-images)$/,
       new RegExp(

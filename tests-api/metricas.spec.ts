@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { acceptInvitation } from "./invitation-helper";
 import { randomUUID } from "node:crypto";
 import { analyticsSchema, recentPeriod } from "../src/data/analytics-contract";
 import { brl } from "../src/domain/model";
@@ -242,19 +243,10 @@ test("gerente acompanha vendas, filtra períodos e protege o dashboard", async (
       password = "Equipe-metricas-password-2026";
     await command("staff/users", {
       email,
-      password,
       name: "Atendimento métricas",
-      phone: "11912345678",
       role: "ATTENDANT",
     });
-    await request.post(`${url}/v1/auth/email-verification/request`, {
-      data: { storeSlug: "bonamassa", email },
-    });
-    const verified = await request.post(
-      `${url}/v1/auth/email-verification/confirm`,
-      { data: { storeSlug: "bonamassa", email, code: "123456" } },
-    );
-    expect(verified.ok()).toBeTruthy();
+    await acceptInvitation(request, email, password);
     const context = await browser.newContext();
     try {
       const staff = await context.newPage();

@@ -495,17 +495,21 @@ export function ApiPanelProvider({ children }: { children: ReactNode }) {
       locked.current = true;
       setWriting(true);
       try {
-        // Passwords are only in the form's memory. Never persist them in IndexedDB.
-        await request("/api/backend/staff/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": key,
-          },
-          body: JSON.stringify(body),
-        });
+        const created = userSchema.parse(
+          await request("/api/backend/staff/users", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": key,
+            },
+            body: JSON.stringify(body),
+          }),
+        );
         notify(
-          "Conta criada. A equipe já pode entrar com o e-mail e a senha cadastrados.",
+          created.invitationStatus === "SENT"
+            ? "Convite enviado. O funcionário deve completar o cadastro pelo link no e-mail."
+            : "Conta criada, mas o envio do convite não foi confirmado. Use Reenviar convite na lista da equipe.",
+          created.invitationStatus !== "SENT",
         );
         await reload();
         return true;

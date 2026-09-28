@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { invitationLink } from "./invitation-helper";
 import { COOKIE, seal, unseal } from "../src/server/session";
 
-test("equipe confirma e-mail, renova a sessão e recupera a senha pela interface", async ({
+test("equipe aceita convite, renova a sessão e recupera a senha pela interface", async ({
   page,
   request,
 }) => {
@@ -24,23 +25,26 @@ test("equipe confirma e-mail, renova a sessão e recupera a senha pela interface
     },
     data: {
       email,
-      password,
       name: "Atendimento confirmação",
-      phone: "11912345678",
       role: "ATTENDANT",
     },
   });
   expect(created.ok(), await created.text()).toBeTruthy();
-  await page.goto("/pedidos");
-  await page.getByLabel("E-mail", { exact: true }).fill(email);
-  await page.getByRole("button", { name: "Confirmar meu e-mail" }).click();
+  await page.goto(await invitationLink(request, email));
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Telefone com DDD")).toHaveCount(0);
+  await page.getByLabel("Crie sua senha").fill(password);
+  await page.getByLabel("Confirme a senha").fill(password);
+  await page.getByRole("button", { name: "Concluir cadastro" }).click();
   await expect(
-    page.getByRole("heading", { name: "Confirme seu e-mail." }),
+    page.getByRole("heading", { name: "Cadastro concluído!" }),
   ).toBeVisible();
-  await page.getByLabel("Código de 6 dígitos").fill("123456");
   await page
-    .getByRole("button", { name: "Confirmar e-mail", exact: true })
+    .getByRole("link", { name: "Entrar no painel", exact: true })
     .click();
+  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("Senha", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Entrar no painel" }).click();
   await expect(page.getByText("Conectado", { exact: true })).toBeVisible();
   const original = (await page.context().cookies()).find(
     (cookie) => cookie.name === COOKIE,
@@ -49,15 +53,13 @@ test("equipe confirma e-mail, renova a sessão e recupera a senha pela interface
   expect(session).toBeTruthy();
   for (const path of ["/api/session", "/api/backend/me"]) {
     // Simulate a browser returning near the original deadline while the API session is active.
-    await page
-      .context()
-      .addCookies([
-        {
-          ...original,
-          value: seal(session.token, Date.now() + 60_000),
-          expires: Math.floor(Date.now() / 1000) + 60,
-        },
-      ]);
+    await page.context().addCookies([
+      {
+        ...original,
+        value: seal(session.token, Date.now() + 60_000),
+        expires: Math.floor(Date.now() / 1000) + 60,
+      },
+    ]);
     const response = await page.request.get(path);
     expect(response.ok()).toBeTruthy();
     const renewed = (await page.context().cookies()).find(
