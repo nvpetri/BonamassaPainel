@@ -1,4 +1,5 @@
 "use client";
+import { visiblePolling } from "@/data/visible-polling";
 
 import {
   useEffect,
@@ -90,19 +91,10 @@ export function ManagerDashboard({ refresh }: { refresh: number }) {
         if (active) setUpdating(false);
       }
     };
-    const start = setTimeout(() => void update(), 0);
-    const visibleUpdate = () => {
-      if (!document.hidden) void update();
-    };
-    const interval = setInterval(visibleUpdate, 30_000);
-    window.addEventListener("focus", visibleUpdate);
-    document.addEventListener("visibilitychange", visibleUpdate);
+    const stop = visiblePolling(update, 30_000);
     return () => {
       active = false;
-      clearTimeout(start);
-      clearInterval(interval);
-      window.removeEventListener("focus", visibleUpdate);
-      document.removeEventListener("visibilitychange", visibleUpdate);
+      stop();
     };
   }, [from, to, refresh, retry, reload]);
 

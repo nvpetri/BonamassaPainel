@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { z } from "zod";
+import { usePathname } from "next/navigation";
+import { visiblePolling } from "@/data/visible-polling";
 import { Context, type PanelContextValue } from "./panel-provider";
 import { type Command, type State } from "@/domain/model";
 import { productSchema } from "@/domain/catalog";
@@ -99,6 +101,8 @@ const readable = (error: unknown) =>
       : "Não foi possível concluir a operação.";
 
 export function ApiPanelProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const pollMilliseconds = pathname === "/dashboard" ? 30_000 : 5000;
   const [user, setUser] = useState<ApiUser | null>(null);
   const [authenticating, setAuthenticating] = useState(true);
   const [state, setState] = useState<State | null>(null);
@@ -254,25 +258,18 @@ export function ApiPanelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     const epochs = generation;
-    const start = setTimeout(() => void reload(), 0);
-    const interval = setInterval(() => {
-      if (!document.hidden && !locked.current) void reload();
-    }, 5000);
-    const clock = setInterval(() => setNow(Date.now() + offset.current), 1000);
-    const focus = () => {
-      if (!locked.current) void reload();
-    };
-    window.addEventListener("focus", focus);
-    window.addEventListener("online", focus);
+    const stop = visiblePolling(async () => {
+      if (!locked.current) await reload();
+    }, pollMilliseconds);
+    const clock = setInterval(() => {
+      if (!document.hidden) setNow(Date.now() + offset.current);
+    }, 1000);
     return () => {
       epochs.current++;
-      clearTimeout(start);
-      clearInterval(interval);
+      stop();
       clearInterval(clock);
-      window.removeEventListener("focus", focus);
-      window.removeEventListener("online", focus);
     };
-  }, [user, reload]);
+  }, [user, reload, pollMilliseconds]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), toast.error ? 9000 : 5000);

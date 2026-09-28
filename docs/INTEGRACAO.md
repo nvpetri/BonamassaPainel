@@ -52,3 +52,11 @@ Em Configurações → Equipe → Nova conta, o gerente informa somente nome, fu
 A lista distingue cadastro pendente, convite enviado, expirado, invalidado ou envio não confirmado. Reenviar convite invalida o anterior; links duram 24 horas e são de uso único. Desativar o acesso também invalida o convite. Um cadastro já concluído usa a recuperação de senha existente. Funcionários antigos não precisam refazer o cadastro.
 
 Antes de publicar, aplique a nova migração da API e configure nela `STAFF_INVITE_URL=https://SEU-PAINEL/convite`, usando o endereço público real do painel. O Resend permanece configurado por EMAIL_API_KEY e EMAIL_FROM. Os e-mails de convite usam o mesmo remetente e estão sujeitos às permissões de envio desse remetente. O painel não precisa de uma nova variável.
+
+## Economia no Neon Free
+
+A integração em CI usa API `207760152ea909a05dabe5d45de545a812e9a0b7`. As métricas da API usam cache de até 15 segundos, invalidado por eventos de alteração da loja. A data de geração continua disponível na resposta.
+
+Na rota `/dashboard`, a atualização dos dados gerais ocorre a cada 30 segundos; telas operacionais continuam a cada 5 segundos. Métricas só são consultadas na tela gerencial. Consultas automáticas pausam quando a aba está oculta ou offline; retorno à aba/rede retoma a atualização sem requisições automáticas sobrepostas. Operações e atualização manual continuam consultando normalmente.
+
+Para permitir suspensão do banco sem usuários, consultar `docs/producao/08-NEON-FREE.md` da API: `SCHEDULER_INTERVAL_SECONDS=0` desativa o scanner periódico, mas mantém reconciliação nas requisições de catálogo/pedidos. Sem acessos, a liberação de reservas aguarda a próxima requisição. O workflow de backup criptografado precisa ser ativado separadamente na API.
