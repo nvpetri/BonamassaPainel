@@ -102,8 +102,9 @@ const readable = (error: unknown) =>
 
 export function ApiPanelProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const pollMilliseconds = pathname === "/dashboard" ? 30_000 : 5000;
   const [user, setUser] = useState<ApiUser | null>(null);
+  const pollMilliseconds =
+    user?.role === "MANAGER" && pathname === "/dashboard" ? 30_000 : 5000;
   const [authenticating, setAuthenticating] = useState(true);
   const [state, setState] = useState<State | null>(null);
   const [catalog, setCatalog] = useState<ApiCatalog | null>(null);
