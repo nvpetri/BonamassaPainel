@@ -57,7 +57,12 @@ test("gerente consulta alteração real e compara antes/depois na auditoria", as
   ).toBe(true);
   await page.screenshot({
     path: testInfo.outputPath("auditoria-celular.png"),
-    fullPage: true,
+  });
+  await dialog
+    .getByRole("heading", { name: "name", exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath("auditoria-comparacao-celular.png"),
   });
   await page.keyboard.press("Escape");
   await page

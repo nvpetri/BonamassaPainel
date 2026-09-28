@@ -5237,6 +5237,7 @@ body:has(dialog[open]) .toast {
   overflow-wrap: anywhere;
 }
 .audit-details {
+  padding: 20px;
   overflow-wrap: anywhere;
   min-width: 0;
 }
