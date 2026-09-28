@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { z } from "zod";
@@ -20,6 +20,7 @@ const schema = z.object({
 });
 type Invitation = z.infer<typeof schema>;
 export function StaffInvitation() {
+  const generation = useRef(0);
   const [token, setToken] = useState<string | null>(null);
   const [invite, setInvite] = useState<Invitation>();
   const [password, setPassword] = useState("");
@@ -31,10 +32,20 @@ export function StaffInvitation() {
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const read = () =>
+    const read = () => {
+      generation.current += 1;
+      setComplete(false);
+      setBusy(false);
+      setPassword("");
+      setConfirmation("");
+      setPhone("");
+      setInvite(undefined);
+      setLoading(true);
       setToken(
         new URLSearchParams(window.location.hash.slice(1)).get("token") || "",
       );
+      setRetry((value) => value + 1);
+    };
     const timer = setTimeout(read, 0);
     window.addEventListener("hashchange", read);
     return () => {
@@ -91,6 +102,7 @@ export function StaffInvitation() {
       setError("Informe seu telefone com DDD.");
       return;
     }
+    const revision = generation.current;
     setBusy(true);
     setError("");
     try {
@@ -104,18 +116,20 @@ export function StaffInvitation() {
           phone: normalized,
         }),
       });
+      if (revision !== generation.current) return;
       setComplete(true);
       setPassword("");
       setConfirmation("");
       window.history.replaceState(null, "", window.location.pathname);
     } catch (caught) {
+      if (revision !== generation.current) return;
       setError(
         caught instanceof ApiError
           ? caught.message
           : "Não foi possível concluir o cadastro. Tente novamente.",
       );
     } finally {
-      setBusy(false);
+      if (revision === generation.current) setBusy(false);
     }
   }
   return (
@@ -192,7 +206,7 @@ export function StaffInvitation() {
                         onChange={(e) => setPhone(e.target.value)}
                       />
                     </Field>
-                  ) : (
+                  ) : invite.role === "MANAGER" ? null : (
                     <p className="field-hint">
                       Se este é o acesso compartilhado da cozinha ou do balcão,
                       o responsável define a senha que será utilizada no setor.
