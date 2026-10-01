@@ -98,3 +98,5 @@ Veja [o contrato da integração](docs/INTEGRACAO.md) e [o registro de verifica�
 ## Preparação para produção
 
 Antes de publicar as mudanças, leia o [guia de produção do painel](docs/PRODUCAO.md). Inclui novas variáveis obrigatórias, separação de ambientes, deploy sem seed permanente, backup/restore e critérios de liberação. Não mesclar em branch com auto-deploy antes de revisar a configuração.
+
+Frete por distância e endereços: [configuração e integração](docs/FRETE-E-ROTAS.md).

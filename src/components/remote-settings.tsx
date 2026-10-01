@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Plus, Save, Users } from "lucide-react";
 import { AuditViewer } from "./audit-viewer";
 import { randomId } from "@/data/api-client";
-import { type ApiStore } from "@/data/api-contract";
+import { addressSchema, type ApiStore } from "@/data/api-contract";
 import { needsEarlyConfirmation, storeDate } from "@/domain/schedule";
 import { usePanel } from "./panel-provider";
 import {
@@ -36,7 +36,41 @@ export function RemoteSettings() {
         <section className="settings-card">
           <h2>Operação da pizzaria</h2>
           <p>{store.name}</p>
-          <p>Taxa de entrega: R$ {moneyText(store.deliveryFee)}</p>
+          {store.address ? (
+            <p>
+              {store.address.street}, {store.address.number} ·{" "}
+              {store.address.neighborhood} · {store.address.city}/
+              {store.address.state} · CEP {store.address.postalCode}
+            </p>
+          ) : (
+            <p>Endereço da pizzaria ainda não configurado.</p>
+          )}
+          {store.location && (
+            <p>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${store.location.latitude},${store.location.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ver localização da pizzaria
+              </a>
+            </p>
+          )}
+          {store.deliveryPricingMode === "DISTANCE" ? (
+            <>
+              <p>Frete por distância de trajeto a partir da pizzaria.</p>
+              {store.deliveryBands.map((band, index) => (
+                <p key={band.upToMeters}>
+                  {index === 0
+                    ? "Até"
+                    : `Acima de ${store.deliveryBands[index - 1].upToMeters / 1000} até`}{" "}
+                  {band.upToMeters / 1000} km: R$ {moneyText(band.fee)}
+                </p>
+              ))}
+            </>
+          ) : (
+            <p>Taxa de entrega fixa: R$ {moneyText(store.deliveryFee)}</p>
+          )}
           <p>Repasse por entrega: R$ {moneyText(store.driverFee)}</p>
           <Badge tone={store.open ? "green" : "red"}>
             {store.open
@@ -225,6 +259,34 @@ function StoreEditor({
   const [name, setName] = useState(initial.name),
     [fee, setFee] = useState(moneyText(initial.deliveryFee)),
     [driverFee, setDriverFee] = useState(moneyText(initial.driverFee));
+  const [pricingMode, setPricingMode] = useState(initial.deliveryPricingMode);
+  const [address, setAddress] = useState(
+    initial.address ?? {
+      street: "",
+      number: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      reference: "",
+    },
+  );
+  const [bands, setBands] = useState(
+    (initial.deliveryBands.length === 5
+      ? initial.deliveryBands
+      : [2000, 4000, 6000, 8000, 10000].map((upToMeters) => ({
+          upToMeters,
+          fee: initial.deliveryFee,
+        }))
+    ).map((band) => ({
+      km: String(band.upToMeters / 1000).replace(".", ","),
+      fee: moneyText(band.fee),
+    })),
+  );
+  const hasAddress = Object.values(address).some(
+    (value) => typeof value === "string" && value.trim(),
+  );
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const deliveryFee = parseMoney(fee),
@@ -238,20 +300,51 @@ function StoreEditor({
       notify("Confira as taxas. Informe valores válidos em reais.", true);
       return;
     }
+    const parsedAddress =
+      hasAddress || pricingMode === "DISTANCE"
+        ? addressSchema.safeParse(address)
+        : null;
+    if (parsedAddress && !parsedAddress.success) {
+      notify(
+        "Complete o endereço da pizzaria, incluindo número, cidade, UF e CEP.",
+        true,
+      );
+      return;
+    }
+    const deliveryBands = bands.map((band) => ({
+      upToMeters: Math.round(Number(band.km.replace(",", ".")) * 1000),
+      fee: parseMoney(band.fee),
+    }));
     if (
-      (
-        await api!.run(
-          "staff/store",
-          {
-            expectedVersion: initial.version,
-            name,
-            deliveryFee,
-            driverFee: repass,
-          },
-          "Operação atualizada.",
-          "PATCH",
-        )
-      ).ok
+      deliveryBands.some(
+        (band, index) =>
+          !/^\d+(?:[.,]\d{1,3})?$/.test(bands[index].km.trim()) ||
+          !Number.isInteger(band.upToMeters) ||
+          band.upToMeters < 100 ||
+          band.upToMeters > 100000 ||
+          !Number.isFinite(band.fee) ||
+          band.fee < 0 ||
+          band.fee > 10000 ||
+          (index > 0 && band.upToMeters <= deliveryBands[index - 1].upToMeters),
+      )
+    ) {
+      notify(
+        "Informe cinco limites crescentes entre 0,1 e 100 km e taxas de até R$ 100,00.",
+        true,
+      );
+      return;
+    }
+    const body = {
+      expectedVersion: initial.version,
+      name,
+      deliveryFee,
+      driverFee: repass,
+      address: parsedAddress?.success ? parsedAddress.data : null,
+      deliveryPricingMode: pricingMode,
+      deliveryBands,
+    };
+    if (
+      (await api!.run("staff/store", body, "Operação atualizada.", "PATCH")).ok
     )
       onClose();
   };
@@ -267,10 +360,151 @@ function StoreEditor({
               onChange={(e) => setName(e.target.value)}
             />
           </Field>
+          <h3>Endereço de saída das entregas</h3>
+          <p className="field-hint">
+            Use o endereço físico da pizzaria. O trajeto começa aqui.
+          </p>
+          <Field label="Rua ou avenida">
+            <input
+              value={address.street}
+              required={pricingMode === "DISTANCE" || Boolean(hasAddress)}
+              maxLength={120}
+              onChange={(e) =>
+                setAddress({ ...address, street: e.target.value })
+              }
+            />
+          </Field>
           <div className="form-row">
-            <Field label="Taxa de entrega">
-              <MoneyInput required value={fee} onChange={setFee} />
+            <Field label="Número">
+              <input
+                value={address.number}
+                required={pricingMode === "DISTANCE" || Boolean(hasAddress)}
+                maxLength={20}
+                onChange={(e) =>
+                  setAddress({ ...address, number: e.target.value })
+                }
+              />
             </Field>
+            <Field label="Bairro">
+              <input
+                value={address.neighborhood}
+                required={pricingMode === "DISTANCE" || Boolean(hasAddress)}
+                maxLength={80}
+                onChange={(e) =>
+                  setAddress({ ...address, neighborhood: e.target.value })
+                }
+              />
+            </Field>
+          </div>
+          <div className="form-row">
+            <Field label="Cidade">
+              <input
+                value={address.city}
+                required={pricingMode === "DISTANCE" || Boolean(hasAddress)}
+                maxLength={80}
+                onChange={(e) =>
+                  setAddress({ ...address, city: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="UF">
+              <input
+                value={address.state}
+                required={pricingMode === "DISTANCE" || Boolean(hasAddress)}
+                maxLength={2}
+                pattern="[A-Z]{2}"
+                onChange={(e) =>
+                  setAddress({
+                    ...address,
+                    state: e.target.value.toUpperCase(),
+                  })
+                }
+              />
+            </Field>
+          </div>
+          <Field label="CEP">
+            <input
+              value={address.postalCode}
+              inputMode="numeric"
+              required={pricingMode === "DISTANCE" || Boolean(hasAddress)}
+              maxLength={8}
+              pattern="[0-9]{8}"
+              onChange={(e) =>
+                setAddress({
+                  ...address,
+                  postalCode: e.target.value.replace(/\D/g, ""),
+                })
+              }
+            />
+          </Field>
+          <h3>Frete do cliente</h3>
+          <Field label="Cobrança de entrega">
+            <select
+              value={pricingMode}
+              onChange={(e) =>
+                setPricingMode(e.target.value as "FLAT" | "DISTANCE")
+              }
+            >
+              <option value="FLAT">Taxa fixa</option>
+              <option value="DISTANCE">Cinco faixas por distância</option>
+            </select>
+          </Field>
+          {pricingMode === "DISTANCE" && (
+            <>
+              <p className="field-hint">
+                Distância do trajeto desde a pizzaria. O limite de cada faixa é
+                incluído nela; a próxima começa acima desse limite. Endereços
+                além da quinta faixa não recebem entrega.
+              </p>
+              {bands.map((band, index) => (
+                <div className="form-row" key={index}>
+                  <Field
+                    label={`Faixa ${index + 1} · até (km)`}
+                    hint={
+                      index === 0
+                        ? "Começa em 0 km"
+                        : `Acima de ${bands[index - 1].km} km`
+                    }
+                  >
+                    <input
+                      required
+                      inputMode="decimal"
+                      value={band.km}
+                      maxLength={7}
+                      onChange={(e) =>
+                        setBands(
+                          bands.map((value, i) =>
+                            i === index
+                              ? { ...value, km: e.target.value }
+                              : value,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label={`Taxa da faixa ${index + 1}`}>
+                    <MoneyInput
+                      required
+                      value={band.fee}
+                      onChange={(value) =>
+                        setBands(
+                          bands.map((band, i) =>
+                            i === index ? { ...band, fee: value } : band,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                </div>
+              ))}
+            </>
+          )}
+          <div className="form-row">
+            {pricingMode === "FLAT" && (
+              <Field label="Taxa de entrega fixa">
+                <MoneyInput required value={fee} onChange={setFee} />
+              </Field>
+            )}
             <Field label="Repasse ao entregador">
               <MoneyInput required value={driverFee} onChange={setDriverFee} />
             </Field>

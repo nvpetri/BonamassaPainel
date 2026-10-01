@@ -197,7 +197,12 @@ export function RemoteNewOrder({
                 <b>{brl(quote.subtotal)}</b>
               </p>
               <p>
-                <span>Entrega</span>
+                <span>
+                  Entrega
+                  {quote.delivery?.distanceMeters != null
+                    ? ` · ${(quote.delivery.distanceMeters / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km`
+                    : ""}
+                </span>
                 <b>{brl(quote.fee)}</b>
               </p>
               {quote.promotion && (
@@ -416,7 +421,12 @@ export function RemoteNewOrder({
             <Button
               type="submit"
               tone="primary"
-              disabled={busy || !items.length || (!state!.storeOpen && !api!.catalog!.store.reservationsAvailable)}
+              disabled={
+                busy ||
+                !items.length ||
+                (!state!.storeOpen &&
+                  !api!.catalog!.store.reservationsAvailable)
+              }
             >
               Revisar pedido
             </Button>

@@ -34,6 +34,33 @@ export const userSchema = z.object({
   version: z.number().int(),
 });
 export type ApiUser = z.infer<typeof userSchema>;
+export const addressSchema = z.object({
+  street: z.string().trim().min(1).max(120),
+  number: z.string().trim().min(1).max(20),
+  neighborhood: z.string().trim().min(1).max(80),
+  city: z.string().trim().min(1).max(80),
+  state: z.string().regex(/^[A-Z]{2}$/),
+  postalCode: z.string().regex(/^\d{8}$/),
+  reference: z.string().trim().max(240),
+  complement: z.string().trim().max(240).optional(),
+  noComplement: z.boolean().optional(),
+});
+export const deliveryBandSchema = z.object({
+  upToMeters: z.number().int().positive(),
+  fee: moneySchema,
+});
+const pointSchema = z.object({ latitude: z.number(), longitude: z.number() });
+export const deliverySchema = z.object({
+  pricingMode: z.enum(["FLAT", "DISTANCE"]),
+  distanceMeters: z.number().int().nonnegative().nullable(),
+  durationSeconds: z.number().int().nonnegative().nullable(),
+  origin: z
+    .object({ address: addressSchema, location: pointSchema.nullable() })
+    .nullable(),
+  destination: pointSchema.nullable(),
+  band: deliveryBandSchema.nullable(),
+  provider: z.literal("OPENROUTESERVICE").nullable(),
+});
 export const storeSchema = z.object({
   id: z.string(),
   slug: z.string(),
@@ -48,6 +75,10 @@ export const storeSchema = z.object({
   nextOpening: date.nullable().optional().default(null),
   overrideOpen: z.boolean().nullable().optional().default(null),
   overrideUntil: date.nullable().optional().default(null),
+  address: addressSchema.nullable().optional().default(null),
+  location: pointSchema.nullable().optional().default(null),
+  deliveryPricingMode: z.enum(["FLAT", "DISTANCE"]).default("FLAT"),
+  deliveryBands: z.array(deliveryBandSchema).default([]),
   deliveryFee: moneySchema,
   driverFee: moneySchema,
   version: z.number().int(),
@@ -119,21 +150,11 @@ export const kitchenOrderSchema = z.object({
   items: z.array(kitchenItem),
 });
 export type KitchenOrder = z.infer<typeof kitchenOrderSchema>;
-export const addressSchema = z.object({
-  street: z.string().trim().min(1).max(120),
-  number: z.string().trim().min(1).max(20),
-  neighborhood: z.string().trim().min(1).max(80),
-  city: z.string().trim().min(1).max(80),
-  state: z.string().regex(/^[A-Z]{2}$/),
-  postalCode: z.string().regex(/^\d{8}$/),
-  reference: z.string().trim().max(240),
-  complement: z.string().trim().max(240).optional(),
-  noComplement: z.boolean().optional(),
-});
 export const apiOrderSchema = kitchenOrderSchema.extend({
   items: z.array(itemSchema),
   customer: z.object({ name: z.string(), phone: z.string() }),
   address: addressSchema.nullable(),
+  delivery: deliverySchema.nullable().optional().default(null),
   channel: z.enum(["APP", "WHATSAPP", "COUNTER"]),
   driverId: z.string().nullable(),
   payment: z.enum(["PREPAID", "CASH", "CARD"]),
@@ -150,6 +171,7 @@ export const apiOrderSchema = kitchenOrderSchema.extend({
 });
 export type ApiOrder = z.infer<typeof apiOrderSchema>;
 export const quoteResponseSchema = z.object({
+  delivery: deliverySchema.nullable().optional().default(null),
   quoteId: z.string(),
   scheduledFor: date.nullable().optional().default(null),
   expiresAt: date,
