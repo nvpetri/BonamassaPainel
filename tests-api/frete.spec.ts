@@ -55,9 +55,9 @@ test("gerente configura endereço e cinco faixas; pedido manual revisa o frete r
     }
     await dialog.getByLabel("Faixa 2 · até (km)", { exact: true }).fill("2");
     await dialog.getByRole("button", { name: "Salvar operação" }).click();
-    await expect(
-      page.getByText(/Informe cinco limites crescentes/),
-    ).toBeVisible();
+    await expect(dialog.getByRole("alert")).toContainText(
+      /Informe cinco limites crescentes/,
+    );
     await dialog.getByLabel("Faixa 2 · até (km)", { exact: true }).fill("4");
     expect(
       (

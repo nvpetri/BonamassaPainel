@@ -1,6 +1,6 @@
 {
   "name": "bonamassa-painel",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -25,7 +25,7 @@
     "@fontsource-variable/dm-sans": "5.3.0",
     "idb": "8.0.3",
     "lucide-react": "1.45.0",
-    "next": "16.3.5",
+    "next": "16.3.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.4"
@@ -37,7 +37,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.5",
+    "eslint-config-next": "16.3.8",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
     "vitest": "5.0.0"
